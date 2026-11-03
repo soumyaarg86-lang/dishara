@@ -1,0 +1,4 @@
+streamlit
+pyswisseph
+google-genai
+geopy
