@@ -26,13 +26,15 @@ h1, h2, h3, h4 {font-family:'Cormorant Garamond',serif !important; color:#FAC775
 .muted {color:#AFA9EC; font-size:13px; margin:0;}
 .gold {color:#FAC775;}
 .big {font-size:17px; font-weight:500; margin:4px 0;}
-.score {font-size:42px; font-weight:500; color:#FAC775; margin:0; line-height:1.1;}
 .bar {height:6px; background:#534AB7; border-radius:3px; margin-top:8px;}
 .bar > div {height:6px; background:#FAC775; border-radius:3px;}
 .stButton > button {background:#EF9F27; color:#412402; border:none; border-radius:999px; font-weight:500; padding:0.45rem 1.4rem;}
 .stButton > button:hover {background:#FAC775; color:#412402;}
 .stTabs [aria-selected="true"] {color:#FAC775 !important;}
 </style>""", unsafe_allow_html=True)
+
+BIG_NUMBER = "font-size:40px;font-weight:500;color:#FAC775;margin:0;line-height:1.2"
+SMALL_SUFFIX = "font-size:15px;color:#AFA9EC"
 
 # ---------------- SECRETS & DATABASE ----------------
 def secret(name):
@@ -137,6 +139,10 @@ MOON_HOUSE_MEANING = {
     12: "Slow down. Rest, let go and plan quietly."}
 TARAS = ["Janma", "Sampat", "Vipat", "Kshema", "Pratyak", "Sadhana", "Naidhana", "Mitra", "Parama Mitra"]
 GOOD_TARAS = {"Sampat", "Kshema", "Sadhana", "Mitra", "Parama Mitra"}
+SCORE_BANDS = [(85, 100, "Strong day", "Good for important starts, key meetings and decisions."),
+               (70, 84, "Steady day", "Good for regular work, follow-ups and steady progress."),
+               (55, 69, "Gentle day", "Keep plans simple. Finish things rather than start new ones."),
+               (45, 54, "Quiet, reflective day", "Rest, plan and reflect. Avoid rushing big decisions.")]
 NAK_LEN = 360 / 27
 swe.set_sid_mode(swe.SIDM_LAHIRI)
 FLAGS = swe.FLG_MOSEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
@@ -167,7 +173,7 @@ def dignity(name, sign):
 
 def varga_sign(lon, n):
     s, deg = int(lon // 30), lon % 30
-    odd = s % 2 == 0          # Aries, Gemini... are odd signs
+    odd = s % 2 == 0
     if n == 1:
         return s
     if n == 2:
@@ -346,8 +352,7 @@ def daily_indicators(chart, now):
     score = (45 + (20 if good_t else 10 if tara == "Janma" else 0)
              + (20 if good_c else 0)
              + (15 if house in (1, 2, 3, 5, 9, 10, 11) else 0))
-    label = ("Strong day" if score >= 85 else "Steady day" if score >= 70
-             else "Gentle day" if score >= 55 else "Quiet, reflective day")
+    label = next(b[2] for b in SCORE_BANDS if b[0] <= score <= b[1])
     return {"tara": tara, "good_tara": good_t, "chandra": chandra, "good_chandra": good_c,
             "house": house, "moon_nak": NAKSHATRAS[nak_now], "moon_sign": SIGNS[msign],
             "score": score, "label": label}
@@ -439,7 +444,7 @@ def get_chart(profile):
     return cache[key]
 
 # ---------------- MATCHMAKING (ASHTAKOOT) ----------------
-VARNA = [3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4]   # 4 Brahmin, 3 Kshatriya, 2 Vaishya, 1 Shudra
+VARNA = [3, 2, 1, 4, 3, 2, 1, 4, 3, 2, 1, 4]
 VASHYA_TABLE = [[2, 1, 1, 0.5, 1], [1, 2, 0.5, 0, 1], [1, 0.5, 2, 1, 1],
                 [0.5, 0, 1, 2, 0], [1, 1, 1, 0, 2]]
 NAK_GANA = "DMRMDMDDRRMMDRDRDRRMMDRRMMD"
@@ -464,7 +469,7 @@ FRIENDS = {"Sun": {"Moon", "Mars", "Jupiter"}, "Moon": {"Sun", "Mercury"},
 ENEMIES = {"Sun": {"Venus", "Saturn"}, "Moon": set(), "Mars": {"Mercury"},
            "Mercury": {"Moon"}, "Jupiter": {"Mercury", "Venus"},
            "Venus": {"Sun", "Moon"}, "Saturn": {"Sun", "Moon", "Mars"}}
-NADI = [0, 1, 2, 2, 1, 0]   # repeats every 6 nakshatras: Adi, Madhya, Antya
+NADI = [0, 1, 2, 2, 1, 0]
 MANGLIK_HOUSES = (1, 2, 4, 7, 8, 12)
 
 def vashya_class(sign, deg):
@@ -514,6 +519,10 @@ def manglik(chart):
     from_moon = (mars["sign"] - chart["planets"]["Moon"]["sign"]) % 12 + 1 in MANGLIK_HOUSES
     from_lagna = None if chart["time_unknown"] else mars["house"] in MANGLIK_HOUSES
     return from_lagna, from_moon
+
+def manglik_text(from_lagna, from_moon):
+    lt = "unknown (no birth time)" if from_lagna is None else ("yes" if from_lagna else "no")
+    return f"from Lagna: {lt}; from Moon: {'yes' if from_moon else 'no'}"
 
 # ---------------- PLACE SEARCH ----------------
 @st.cache_data(show_spinner=False, ttl=86400)
@@ -638,6 +647,11 @@ def hero():
       <p class="gold" style="margin:0">दिशारा</p>
       <p style="color:#CECBF6;font-size:15px">Your stars, your direction.<br>Every night ends in a sunrise.</p>
     </div>""", unsafe_allow_html=True)
+
+def reset_conversation():
+    st.session_state.conv_id = None
+    st.session_state.conv_msgs = []
+    st.session_state.conv_nonce = st.session_state.get("conv_nonce", 0) + 1
 
 def auth_screen():
     hero()
@@ -770,11 +784,6 @@ def chart_form(uid, existing):
             reset_conversation()
             st.rerun()
 
-def reset_conversation():
-    st.session_state.conv_id = None
-    st.session_state.conv_msgs = []
-    st.session_state.conv_nonce = st.session_state.get("conv_nonce", 0) + 1
-
 # ---------------- APP FLOW ----------------
 if "user" not in st.session_state:
     auth_screen()
@@ -832,22 +841,23 @@ home, chat, kundali, match = st.tabs(["Home", "Ask Dishara", "Kundali", "Match"]
 # ----- HOME -----
 with home:
     ind = daily_indicators(chart, now)
-    tara_word = ("supportive" if ind["good_tara"] else "a reflective day"
-                 if ind["tara"] == "Janma" else "a day to go gently")
+    if ind["good_tara"]:
+        tara_word = "supportive"
+    elif ind["tara"] == "Janma":
+        tara_word = "a reflective day"
+    else:
+        tara_word = "a day to go gently"
     chandra_word = "favourable" if ind["good_chandra"] else "asks for patience"
     st.markdown(f"""<div class="card"><p class="muted">Today's energy · {today:%d %b %Y}</p>
-      <p style="font-size:40px;font-weight:500;color:#FAC775;margin:0;line-height:1.2">{ind['score']}<span style="font-size:15px;color:#AFA9EC"> / 100 · {ind['label']}</span></p>
+      <p style="{BIG_NUMBER}">{ind['score']}<span style="{SMALL_SUFFIX}"> / 100 · {ind['label']}</span></p>
       <p class="big">{MOON_HOUSE_MEANING[ind['house']]}</p>
       <p class="muted">Why: the Moon is in {ind['moon_nak']}, giving {html.escape(pname)} a
       {ind['tara']} tara ({tara_word}). It's in the {ordinal(ind['chandra'])} sign from the natal
       Moon ({chandra_word}) and the {ordinal(ind['house'])} house of the chart.</p></div>""",
                 unsafe_allow_html=True)
-      with st.expander("What does this score mean?"):
-        bands = [(85, 100, "Strong day", "Good for important starts, key meetings and decisions."),
-                 (70, 84, "Steady day", "Good for regular work, follow-ups and steady progress."),
-                 (55, 69, "Gentle day", "Keep plans simple. Finish things rather than start new ones."),
-                 (45, 54, "Quiet, reflective day", "Rest, plan and reflect. Avoid rushing big decisions.")]
-        for lo, hi, band_name, meaning in bands:
+
+    with st.expander("What does this score mean?"):
+        for lo, hi, band_name, meaning in SCORE_BANDS:
             if lo <= ind["score"] <= hi:
                 st.markdown(f"**→ {lo}–{hi} · {band_name} (today):** {meaning}")
             else:
@@ -870,7 +880,8 @@ with home:
                             f"Tara: {ind['tara']} ({'good' if ind['good_tara'] else 'challenging'}); "
                             f"Moon is {ordinal(ind['chandra'])} from natal Moon "
                             f"({'favourable' if ind['good_chandra'] else 'less favourable'}); "
-                            f"Moon transits house {ind['house']} from Lagna.")
+                            f"Moon transits house {ind['house']} from Lagna; "
+                            f"day score {ind['score']}/100 ({ind['label']}).")
                 tip = ask_dishara(
                     f"BIRTH CHART:\n{chart_text(chart, now)}\n\nTODAY'S INDICATORS:\n{ind_text}\n\n"
                     f"DAILY TIPS REQUEST for {today:%d %b %Y}: Start with one bold line naming today's "
@@ -883,7 +894,7 @@ with home:
             else:
                 st.caption("Today's tips will appear shortly. Refresh in a minute.")
     if tip_key in tips_cache:
-        st.markdown(f"<div class='card'><p class='muted'>Today's personal tips</p></div>",
+        st.markdown("<div class='card'><p class='muted'>Today's personal tips</p></div>",
                     unsafe_allow_html=True)
         st.markdown(tips_cache[tip_key])
 
@@ -997,18 +1008,16 @@ with match:
                 verdict = ("Excellent" if total >= 32 else "Very good" if total >= 25
                            else "Good" if total >= 18 else "Needs understanding and effort")
                 st.markdown(f"""<div class="card"><p class="muted">Ashtakoot Guna Milan</p>
-                  <p style="font-size:40px;font-weight:500;color:#FAC775;margin:0;line-height:1.2">{total:g}<span style="font-size:15px;color:#AFA9EC"> / 36</span></p><p class="big">{verdict}</p>
+                  <p style="{BIG_NUMBER}">{total:g}<span style="{SMALL_SUFFIX}"> / 36</span></p>
+                  <p class="big">{verdict}</p>
                   <p class="muted">18+ is traditionally considered suitable. A score is one view;
                   the full charts and the two people matter more.</p></div>""", unsafe_allow_html=True)
                 st.dataframe([{"Koota": r[0], "Score": f"{r[1]:g} / {r[2]}", "What it reflects": r[3]}
                               for r in mres["rows"]], hide_index=True)
                 (la, ma), (lb, mb) = mres["manglik"]
-                def mtxt(l, m):
-                    lt = "unknown (no birth time)" if l is None else ("yes" if l else "no")
-                    return f"from Lagna: {lt}; from Moon: {'yes' if m else 'no'}"
                 st.markdown(f"**Mars placement (Manglik check)**  \n"
-                            f"{html.escape(by_id[a]['name'])}: {mtxt(la, ma)}  \n"
-                            f"{html.escape(by_id[b]['name'])}: {mtxt(lb, mb)}")
+                            f"{html.escape(by_id[a]['name'])}: {manglik_text(la, ma)}  \n"
+                            f"{html.escape(by_id[b]['name'])}: {manglik_text(lb, mb)}")
                 st.caption("Traditionally, if both partners have this Mars placement it balances out. "
                            "It's one factor among many, not a verdict.")
                 if st.button("Get detailed compatibility reading"):
@@ -1018,7 +1027,7 @@ with match:
                         f"COMPATIBILITY REQUEST between {by_id[a]['name']} (Partner 1) and "
                         f"{by_id[b]['name']} (Partner 2).\n\nPARTNER 1 CHART:\n{chart_text(ca, now)}\n\n"
                         f"PARTNER 2 CHART:\n{chart_text(cb, now)}\n\nASHTAKOOT ({total:g}/36):\n{koota_txt}\n\n"
-                        f"MANGLIK: Partner 1 {mtxt(la, ma)}; Partner 2 {mtxt(lb, mb)}\n\n"
+                        f"MANGLIK: Partner 1 {manglik_text(la, ma)}; Partner 2 {manglik_text(lb, mb)}\n\n"
                         f"Write a detailed, balanced compatibility reading with bold headings: "
                         f"**Overall** (2 lines putting the score in context), **Where you naturally connect** "
                         f"(3 bullets citing kootas and chart factors such as 7th houses, Venus, Moon and D9), "
