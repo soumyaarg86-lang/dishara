@@ -1987,7 +1987,7 @@ if "paste-your-link" not in FEEDBACK_URL:
     st.markdown(f"<p class='muted' style='text-align:center'>{t('feedback')} "
                 f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>{t('feedback_link')}</a></p>",
                 unsafe_allow_html=True)
-st.markdown(f"<p class='muted' style='text-align:center'>{t('signed_in', email=html.escape(user_email))} · "
+st.markdown(f"<p class='muted' style='text-align:center;margin-bottom:20px'>{t('signed_in', email=html.escape(user_email))} · "
             f"<a href='?page=privacy' target='_blank' style='color:#AFA9EC'>{t('privacy_link')}</a></p>",
             unsafe_allow_html=True)
 _, f1, f2, _ = st.columns([1, 2, 2, 1])
