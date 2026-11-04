@@ -1990,11 +1990,12 @@ if "paste-your-link" not in FEEDBACK_URL:
 st.markdown(f"<p class='muted' style='text-align:center'>{t('signed_in', email=html.escape(user_email))} · "
             f"<a href='?page=privacy' target='_blank' style='color:#AFA9EC'>{t('privacy_link')}</a></p>",
             unsafe_allow_html=True)
-f1, f2 = st.columns(2)
-if f1.button(t("edit_chart")):
+_, f1, f2, _ = st.columns([1, 2, 2, 1])
+if f1.button(t("edit_chart"), use_container_width=True):
     st.session_state.mode = "edit"
     st.rerun()
-if f2.button(t("sign_out")):
+_, f1, f2, _ = st.columns([1, 2, 2, 1])
+if f1.button(t("edit_chart"), use_container_width=True):
     try:
         auth_client().auth.sign_out()
     except Exception:
