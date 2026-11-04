@@ -1527,9 +1527,11 @@ def auth_screen():
     tab_in, tab_up = st.tabs([t("tab_signin"), t("tab_signup")])
     logged_in = None
     with tab_in:
-        email = st.text_input(t("email"), key="si_email", autocomplete="email")
-        pw = st.text_input(t("password"), type="password", key="si_pw", autocomplete="current-password")
-        if st.button(t("tab_signin"), key="si_btn"):
+        with st.form("signin_form", border=False):
+            email = st.text_input(t("email"), key="si_email", autocomplete="email")
+            pw = st.text_input(t("password"), type="password", key="si_pw", autocomplete="current-password")
+            submitted = st.form_submit_button(t("tab_signin"))
+        if submitted:
             if not email.strip() or not pw:
                 st.warning(pick((
                     "Your browser filled in the boxes, but the app didn't receive them. Please click inside "
