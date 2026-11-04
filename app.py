@@ -604,4 +604,424 @@ def get_models():
     order = {"gemini-flash-latest": 0, "gemini-flash-lite-latest": 1}
     return sorted(models, key=lambda m: order.get(m, 2))
 
-def ask_dishara(prompt, lang, chart_name,
+def ask_dishara(prompt, lang, chart_name, rel):
+    client = get_client()
+    for model in get_models()[:6]:
+        for attempt in range(2):
+            try:
+                r = client.models.generate_content(
+                    model=model, contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt(lang, chart_name, rel), temperature=0.5))
+                return r.text
+            except errors.ServerError:
+                time.sleep(2 * (attempt + 1))
+            except errors.ClientError:
+                break
+    return RESTING
+
+# ---------------- SCREENS ----------------
+def hero():
+    st.markdown("""<div style="text-align:center;padding:16px 0 4px">
+      <svg viewBox="0 0 200 120" width="200"><g stroke="#FAC775" stroke-width="2" stroke-linecap="round">
+      <line x1="100" y1="8" x2="100" y2="26"/><line x1="40" y1="33" x2="53" y2="46"/><line x1="160" y1="33" x2="147" y2="46"/>
+      <line x1="14" y1="90" x2="31" y2="90"/><line x1="186" y1="90" x2="169" y2="90"/></g>
+      <path d="M45 98 A55 55 0 0 1 155 98 Z" fill="#EF9F27"/><path d="M68 98 A32 32 0 0 1 132 98 Z" fill="#FAC775"/>
+      <line x1="10" y1="98" x2="190" y2="98" stroke="#7F77DD" stroke-width="1.5"/></svg>
+      <h1 style="font-size:48px;margin:0">Dishara</h1>
+      <p class="gold" style="margin:0">दिशारा</p>
+      <p style="color:#CECBF6;font-size:15px">Your stars, your direction.<br>Every night ends in a sunrise.</p>
+    </div>""", unsafe_allow_html=True)
+
+def auth_screen():
+    hero()
+    signin, signup = st.tabs(["Sign in", "Create account"])
+    logged_in = None
+    with signin:
+        email = st.text_input("Email", key="si_email")
+        pw = st.text_input("Password", type="password", key="si_pw")
+        if st.button("Sign in"):
+            try:
+                res = db().auth.sign_in_with_password({"email": email.strip(), "password": pw})
+                logged_in = {"id": res.user.id, "email": res.user.email}
+            except Exception:
+                st.error("Couldn't sign in. Check your email and password.")
+    with signup:
+        email2 = st.text_input("Email", key="su_email")
+        pw2 = st.text_input("Password (at least 8 characters)", type="password", key="su_pw")
+        consent = st.checkbox("I agree that Dishara can store birth details and conversations "
+                              "to personalise guidance. I can ask for them to be deleted anytime.")
+        if st.button("Create account"):
+            if len(pw2) < 8:
+                st.error("Please use a password of at least 8 characters.")
+            elif not consent:
+                st.error("Please tick the consent box to continue.")
+            else:
+                try:
+                    res = db().auth.sign_up({"email": email2.strip(), "password": pw2})
+                    if res.session:
+                        logged_in = {"id": res.user.id, "email": res.user.email}
+                    else:
+                        st.success("Account created. Check your email to confirm, then sign in.")
+                except Exception as ex:
+                    st.error(f"Couldn't create the account: {ex}")
+    if logged_in:
+        st.session_state.user = logged_in
+        st.rerun()
+
+def chart_form(uid, existing):
+    hero()
+    ex = existing or {}
+    first_chart = not st.session_state.get("charts")
+    st.markdown("### " + ("Edit birth details" if ex else "Add a birth chart"))
+    name = st.text_input("Name", value=ex.get("name", ""))
+    rel_default = RELATIONS.index(ex["relation"]) if ex.get("relation") in RELATIONS else (0 if first_chart else 1)
+    rel = st.selectbox("Whose chart is this?", RELATIONS, index=rel_default)
+    bdate = st.date_input("Birth date", value=date.fromisoformat(ex["birth_date"]) if ex else None,
+                          min_value=date(1900, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
+
+    unknown = st.checkbox("I don't know the exact birth time", value=ex.get("time_unknown", False))
+    hour = minute = ampm = None
+    if not unknown:
+        ih = im = iap = None
+        if ex and not ex.get("time_unknown"):
+            t = datetime.strptime(ex["birth_time"][:5], "%H:%M")
+            ih, im, iap = (t.hour % 12 or 12) - 1, t.minute, 0 if t.hour < 12 else 1
+        st.markdown("<p class='muted'>Birth time (you can type to jump, e.g. 7 or 45)</p>",
+                    unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        hour = c1.selectbox("Hour", list(range(1, 13)), index=ih, placeholder="Hour")
+        minute = c2.selectbox("Minute", [f"{m:02d}" for m in range(60)], index=im, placeholder="Min")
+        ampm = c3.selectbox("AM / PM", ["AM", "PM"], index=iap, placeholder="AM/PM")
+    else:
+        st.caption("No problem. Dishara will read the Moon chart, which is still very meaningful.")
+
+    place = (ex["place"], ex["lat"], ex["lon"]) if ex else None
+    if ex:
+        st.markdown(f"<p class='muted'>Current birth place: {html.escape(ex['place'])}</p>",
+                    unsafe_allow_html=True)
+    query = st.text_input("Birth place: type the town or city and press Enter", placeholder="e.g. Mysuru")
+    if len(query.strip()) >= 3:
+        with st.spinner("Finding places..."):
+            options = search_places(query.strip())
+        if options:
+            labels = [o[0] for o in options]
+            pick = st.selectbox("Select the birth place", labels, index=None,
+                                placeholder="Choose the correct place")
+            if pick:
+                place = options[labels.index(pick)]
+        else:
+            st.warning("No match found. Check the spelling, or try the nearest bigger town.")
+
+    default_lang = LANGUAGES.index(ex["language"]) if ex.get("language") in LANGUAGES else 0
+    lang = st.selectbox("Language for answers", LANGUAGES, index=default_lang)
+
+    if st.button("Save chart"):
+        problems = []
+        if not name.strip():
+            problems.append("a name")
+        if not bdate:
+            problems.append("the birth date")
+        if not unknown and (hour is None or minute is None or ampm is None):
+            problems.append("hour, minute and AM/PM")
+        if not place:
+            problems.append("the birth place (pick one from the list)")
+        if problems:
+            st.error("Please add " + ", ".join(problems) + ".")
+            return
+        h24, mins = (12, 0) if unknown else (hour % 12 + (12 if ampm == "PM" else 0), int(minute))
+        row = {"user_id": uid, "name": name.strip(), "relation": rel,
+               "birth_date": bdate.isoformat(), "birth_time": f"{h24:02d}:{mins:02d}",
+               "time_unknown": unknown, "place": place[0], "lat": place[1], "lon": place[2],
+               "language": lang}
+        saved = None
+        try:
+            if ex:
+                saved = db().table("profiles").update(row).eq("id", ex["id"]).execute().data[0]
+            else:
+                saved = db().table("profiles").insert(row).execute().data[0]
+        except Exception as ex2:
+            st.error(f"Couldn't save the chart: {ex2}")
+        if saved:
+            st.session_state.charts = list_charts(uid)
+            st.session_state.active_id = saved["id"]
+            st.session_state.mode = None
+            reset_conversation()
+            st.rerun()
+
+    if not first_chart:
+        if st.button("Cancel"):
+            st.session_state.mode = None
+            st.rerun()
+    if ex:
+        st.markdown("---")
+        confirm = st.checkbox(f"Yes, permanently delete {ex['name']}'s chart and its conversations")
+        if confirm and st.button("Delete this chart"):
+            db().table("profiles").delete().eq("id", ex["id"]).execute()
+            st.session_state.charts = list_charts(uid)
+            st.session_state.active_id = None
+            st.session_state.mode = None
+            reset_conversation()
+            st.rerun()
+
+def reset_conversation():
+    st.session_state.conv_id = None
+    st.session_state.conv_msgs = []
+    st.session_state.conv_nonce = st.session_state.get("conv_nonce", 0) + 1
+
+# ---------------- APP FLOW ----------------
+if "user" not in st.session_state:
+    auth_screen()
+    st.stop()
+
+uid = st.session_state.user["id"]
+if "charts" not in st.session_state:
+    st.session_state.charts = list_charts(uid)
+    reset_conversation()
+charts = st.session_state.charts
+mode = st.session_state.get("mode")
+
+if not charts or mode == "new":
+    chart_form(uid, None)
+    st.stop()
+
+by_id = {c["id"]: c for c in charts}
+if st.session_state.get("active_id") not in by_id:
+    self_chart = next((c for c in charts if c["relation"] == "Self"), charts[0])
+    st.session_state.active_id = self_chart["id"]
+
+if mode == "edit":
+    chart_form(uid, by_id[st.session_state.active_id])
+    st.stop()
+
+def chart_label(i):
+    c = by_id[i]
+    return f"{c['name']} ({c['relation']})"
+
+me = next((c for c in charts if c["relation"] == "Self"), charts[0])
+st.markdown(f"<p class='muted'>Shubh din</p><h2 style='margin-top:0'>Namaste, "
+            f"{html.escape(me['name'])}</h2>", unsafe_allow_html=True)
+
+ids = [c["id"] for c in charts]
+c1, c2 = st.columns([3, 1])
+picked = c1.selectbox("Viewing chart", ids, index=ids.index(st.session_state.active_id),
+                      format_func=chart_label)
+if picked != st.session_state.active_id:
+    st.session_state.active_id = picked
+    reset_conversation()
+c2.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
+if c2.button("+ Add chart"):
+    st.session_state.mode = "new"
+    st.rerun()
+
+profile = by_id[st.session_state.active_id]
+pid, pname, prel, lang = profile["id"], profile["name"], profile["relation"], profile["language"]
+chart = get_chart(profile)
+now = datetime.now(timezone.utc).replace(tzinfo=None)
+today = (now + timedelta(hours=IST)).date()
+cur = next(d for d in chart["dashas"] if d["start"] <= now < d["end"])
+
+home, chat, kundali, match = st.tabs(["Home", "Ask Dishara", "Kundali", "Match"])
+
+# ----- HOME -----
+with home:
+    ind = daily_indicators(chart, now)
+    tara_word = "supportive" if ind["good_tara"] else "a day to go gently"
+    chandra_word = "favourable" if ind["good_chandra"] else "asks for patience"
+    st.markdown(f"""<div class="card"><p class="muted">Today's energy · {today:%d %b %Y}</p>
+      <p class="score">{ind['score']}</p>
+      <p class="big">{MOON_HOUSE_MEANING[ind['house']]}</p>
+      <p class="muted">Why: the Moon is in {ind['moon_nak']}, giving {html.escape(pname)} a
+      {ind['tara']} tara ({tara_word}). It's in the {ordinal(ind['chandra'])} sign from the natal
+      Moon ({chandra_word}) and the {ordinal(ind['house'])} house of the chart.</p></div>""",
+                unsafe_allow_html=True)
+
+    tips_cache = st.session_state.setdefault("tips", {})
+    tip_key = f"{pid}|{today}"
+    if tip_key not in tips_cache:
+        saved_tip = get_saved_tip(pid, today)
+        if saved_tip:
+            tips_cache[tip_key] = saved_tip
+        else:
+            with st.spinner("Preparing today's personal tips..."):
+                ind_text = (f"Moon today in {ind['moon_sign']}, nakshatra {ind['moon_nak']}; "
+                            f"Tara: {ind['tara']} ({'good' if ind['good_tara'] else 'challenging'}); "
+                            f"Moon is {ordinal(ind['chandra'])} from natal Moon "
+                            f"({'favourable' if ind['good_chandra'] else 'less favourable'}); "
+                            f"Moon transits house {ind['house']} from Lagna.")
+                tip = ask_dishara(
+                    f"BIRTH CHART:\n{chart_text(chart, now)}\n\nTODAY'S INDICATORS:\n{ind_text}\n\n"
+                    f"DAILY TIPS REQUEST for {today:%d %b %Y}: Start with one bold line naming today's "
+                    f"theme. Then exactly 3 bullets: **Work**, **Relationships**, **Wellbeing**, each "
+                    f"one practical action with a short reason from today's Moon, Tara or the current "
+                    f"dasha. Under 120 words.", lang, pname, prel)
+            if tip != RESTING:
+                save_tip(uid, pid, today, tip)
+                tips_cache[tip_key] = tip
+            else:
+                st.caption("Today's tips will appear shortly. Refresh in a minute.")
+    if tip_key in tips_cache:
+        st.markdown(f"<div class='card'><p class='muted'>Today's personal tips</p></div>",
+                    unsafe_allow_html=True)
+        st.markdown(tips_cache[tip_key])
+
+    pct = int(100 * (now - cur["start"]) / (cur["end"] - cur["start"]))
+    st.markdown(f"""<div class="card"><p class="muted">Current chapter · until {cur['end']:%b %Y}</p>
+      <p class="big">{cur['lord']} Mahadasha: {CHAPTER_THEME[cur['lord']]}</p>
+      <div class="bar"><div style="width:{pct}%"></div></div></div>""", unsafe_allow_html=True)
+    sub = upcoming_subperiods(chart, now, 1)[0]
+    st.markdown(f"""<div class="card"><p class="muted">Current sub-period · until {sub['end']:%b %Y}</p>
+      <p class="big">{sub['md']}–{sub['lord']}: {CHAPTER_THEME[sub['lord']]}</p></div>""",
+                unsafe_allow_html=True)
+    if chart["time_unknown"]:
+        st.caption("Reading from the Moon chart, since the birth time is unknown.")
+
+# ----- ASK DISHARA -----
+with chat:
+    convs = list_conversations(pid)
+    titles = {c["id"]: f"{c['created_at'][:10]} · {c['title']}" for c in convs}
+    b1, b2 = st.columns([1, 2])
+    if b1.button("New conversation"):
+        reset_conversation()
+        st.rerun()
+    pick = b2.selectbox("Past conversations", list(titles), index=None, format_func=lambda i: titles[i],
+                        placeholder=f"Open a past conversation ({len(convs)})",
+                        key=f"conv_pick_{pid}_{st.session_state.conv_nonce}",
+                        label_visibility="collapsed")
+    if pick and pick != st.session_state.conv_id:
+        st.session_state.conv_id = pick
+        st.session_state.conv_msgs = load_conversation(pick)
+
+    if st.session_state.conv_id and st.session_state.conv_id in titles:
+        st.markdown(f"<p class='muted'>{html.escape(titles[st.session_state.conv_id])}</p>",
+                    unsafe_allow_html=True)
+    elif not st.session_state.conv_msgs:
+        st.markdown(f"<p class='muted'>Ask anything about {html.escape(pname)}'s chart: career, "
+                    f"relationships, timing, strengths...</p>", unsafe_allow_html=True)
+
+    for m in st.session_state.conv_msgs:
+        with st.chat_message(m["role"], avatar="🌅" if m["role"] == "assistant" else None):
+            st.markdown(m["content"])
+
+    q = st.chat_input("Ask anything about this chart")
+    if q:
+        if not st.session_state.conv_id:
+            st.session_state.conv_id = new_conversation(uid, pid, q)
+        cid = st.session_state.conv_id
+        st.session_state.conv_msgs.append({"role": "user", "content": q})
+        save_message(uid, cid, "user", q)
+        with st.chat_message("user"):
+            st.markdown(q)
+        if any(w in q.lower() for w in CRISIS_WORDS):
+            answer = CRISIS_REPLY
+        else:
+            past_topics = [c["title"] for c in convs if c["id"] != cid][:8]
+            current = "\n".join(f"{m['role']}: {m['content']}"
+                                for m in st.session_state.conv_msgs[-11:-1])
+            prompt = (f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
+                      f"TOPICS FROM EARLIER CONVERSATIONS: {'; '.join(past_topics) or 'None'}\n\n"
+                      f"THIS CONVERSATION SO FAR:\n{current or 'None'}\n\nQUESTION: {q}")
+            with st.spinner("Dishara is studying the chart..."):
+                answer = ask_dishara(prompt, lang, pname, prel)
+        st.session_state.conv_msgs.append({"role": "assistant", "content": answer})
+        save_message(uid, cid, "assistant", answer)
+        with st.chat_message("assistant", avatar="🌅"):
+            st.markdown(answer)
+
+# ----- KUNDALI -----
+with kundali:
+    options = ["D1 · Rashi (overall life)"] if chart["time_unknown"] else list(VARGAS)
+    vname = st.selectbox("Chart", options)
+    n = VARGAS[vname]
+    st.markdown(kundali_svg(chart, n), unsafe_allow_html=True)
+    st.caption("North Indian style · numbers show the sign in each house"
+               + (" · Moon chart (birth time unknown; divisional charts need the exact time)"
+                  if chart["time_unknown"] else ""))
+    rows = [{"Planet": nm + (" (R)" if p["retro"] else ""), "Sign": SIGNS[p["sign"]],
+             "Degree": f"{p['deg']:.2f}°", "House": p["house"], "Strength": p["dignity"] or "-",
+             "Nakshatra": f"{NAKSHATRAS[p['nak']]} {p['pada']}",
+             "D9": SHORT[p["vargas"][9]], "D10": SHORT[p["vargas"][10]]}
+            for nm, p in chart["planets"].items()]
+    st.dataframe(rows, hide_index=True)
+    ys = find_yogas(chart)
+    if ys:
+        st.markdown("#### Yogas")
+        for y in ys:
+            st.markdown(f"- {y}")
+    st.markdown("#### Life chapters")
+    for d in chart["dashas"]:
+        mark = "  ← now" if d is cur else ""
+        st.markdown(f"**{d['lord']}** · {d['start']:%b %Y} – {d['end']:%b %Y}{mark}")
+
+# ----- MATCH -----
+with match:
+    if len(charts) < 2:
+        st.info("Add your partner's chart first: tap **+ Add chart** and choose "
+                "'Spouse / Partner'. Then come back here.")
+    else:
+        m1, m2 = st.columns(2)
+        a = m1.selectbox("Groom / Partner 1", ids, index=0, format_func=chart_label, key="m_a")
+        b = m2.selectbox("Bride / Partner 2", ids, index=1, format_func=chart_label, key="m_b")
+        if a == b:
+            st.warning("Choose two different charts.")
+        else:
+            if st.button("Check compatibility"):
+                ca, cb = get_chart(by_id[a]), get_chart(by_id[b])
+                st.session_state.match = {"a": a, "b": b, "rows": ashtakoot(ca, cb),
+                                          "manglik": (manglik(ca), manglik(cb)), "reading": None}
+            mres = st.session_state.get("match")
+            if mres and mres["a"] == a and mres["b"] == b:
+                total = sum(r[1] for r in mres["rows"])
+                verdict = ("Excellent" if total >= 32 else "Very good" if total >= 25
+                           else "Good" if total >= 18 else "Needs understanding and effort")
+                st.markdown(f"""<div class="card"><p class="muted">Ashtakoot Guna Milan</p>
+                  <p class="score">{total:g} / 36</p><p class="big">{verdict}</p>
+                  <p class="muted">18+ is traditionally considered suitable. A score is one view;
+                  the full charts and the two people matter more.</p></div>""", unsafe_allow_html=True)
+                st.dataframe([{"Koota": r[0], "Score": f"{r[1]:g} / {r[2]}", "What it reflects": r[3]}
+                              for r in mres["rows"]], hide_index=True)
+                (la, ma), (lb, mb) = mres["manglik"]
+                def mtxt(l, m):
+                    lt = "unknown (no birth time)" if l is None else ("yes" if l else "no")
+                    return f"from Lagna: {lt}; from Moon: {'yes' if m else 'no'}"
+                st.markdown(f"**Mars placement (Manglik check)**  \n"
+                            f"{html.escape(by_id[a]['name'])}: {mtxt(la, ma)}  \n"
+                            f"{html.escape(by_id[b]['name'])}: {mtxt(lb, mb)}")
+                st.caption("Traditionally, if both partners have this Mars placement it balances out. "
+                           "It's one factor among many, not a verdict.")
+                if st.button("Get detailed compatibility reading"):
+                    ca, cb = get_chart(by_id[a]), get_chart(by_id[b])
+                    koota_txt = "\n".join(f"{r[0]}: {r[1]:g}/{r[2]} ({r[3]})" for r in mres["rows"])
+                    prompt = (
+                        f"COMPATIBILITY REQUEST between {by_id[a]['name']} (Partner 1) and "
+                        f"{by_id[b]['name']} (Partner 2).\n\nPARTNER 1 CHART:\n{chart_text(ca, now)}\n\n"
+                        f"PARTNER 2 CHART:\n{chart_text(cb, now)}\n\nASHTAKOOT ({total:g}/36):\n{koota_txt}\n\n"
+                        f"MANGLIK: Partner 1 {mtxt(la, ma)}; Partner 2 {mtxt(lb, mb)}\n\n"
+                        f"Write a detailed, balanced compatibility reading with bold headings: "
+                        f"**Overall** (2 lines putting the score in context), **Where you naturally connect** "
+                        f"(3 bullets citing kootas and chart factors such as 7th houses, Venus, Moon and D9), "
+                        f"**Where you'll need understanding** (2-3 bullets framed as growth areas with "
+                        f"practical advice), **Making it work** (3 practical tips). Never predict divorce "
+                        f"or call the match doomed. Under 350 words.")
+                    with st.spinner("Dishara is comparing both charts..."):
+                        mres["reading"] = ask_dishara(prompt, lang, pname, "Self")
+                if mres.get("reading"):
+                    st.markdown(mres["reading"])
+
+# ----- FOOTER -----
+st.divider()
+if "paste-your-link" not in FEEDBACK_URL:
+    st.markdown(f"<p class='muted' style='text-align:center'>Help shape Dishara: "
+                f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>share your feedback</a></p>",
+                unsafe_allow_html=True)
+f1, f2 = st.columns(2)
+if f1.button("Edit this chart"):
+    st.session_state.mode = "edit"
+    st.rerun()
+if f2.button("Sign out"):
+    try:
+        db().auth.sign_out()
+    except Exception:
+        pass
+    st.session_state.clear()
+    st.rerun()
