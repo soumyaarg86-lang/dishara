@@ -341,10 +341,16 @@ def daily_indicators(chart, now):
     tara = TARAS[(nak_now - chart["planets"]["Moon"]["nak"]) % 9]
     msign = int(moon_now // 30)
     chandra = (msign - chart["planets"]["Moon"]["sign"]) % 12 + 1
-    good_t, good_c = tara in GOOD_TARAS, chandra in (1, 3, 6, 7, 10, 11)
+        good_t, good_c = tara in GOOD_TARAS, chandra in (1, 3, 6, 7, 10, 11)
+    house = house_of(chart, msign)
+    score = (45 + (20 if good_t else 10 if tara == "Janma" else 0)
+             + (20 if good_c else 0)
+             + (15 if house in (1, 2, 3, 5, 9, 10, 11) else 0))
+    label = ("Strong day" if score >= 85 else "Steady day" if score >= 70
+             else "Gentle day" if score >= 55 else "Quiet, reflective day")
     return {"tara": tara, "good_tara": good_t, "chandra": chandra, "good_chandra": good_c,
-            "house": house_of(chart, msign), "moon_nak": NAKSHATRAS[nak_now],
-            "moon_sign": SIGNS[msign], "score": 45 + (25 if good_t else 0) + (25 if good_c else 0)}
+            "house": house, "moon_nak": NAKSHATRAS[nak_now], "moon_sign": SIGNS[msign],
+            "score": score, "label": label}
 
 def chart_text(chart, now):
     P = chart["planets"]
@@ -826,15 +832,31 @@ home, chat, kundali, match = st.tabs(["Home", "Ask Dishara", "Kundali", "Match"]
 # ----- HOME -----
 with home:
     ind = daily_indicators(chart, now)
-    tara_word = "supportive" if ind["good_tara"] else "a day to go gently"
+    tara_word = ("supportive" if ind["good_tara"] else "a reflective day"
+                 if ind["tara"] == "Janma" else "a day to go gently")
     chandra_word = "favourable" if ind["good_chandra"] else "asks for patience"
     st.markdown(f"""<div class="card"><p class="muted">Today's energy · {today:%d %b %Y}</p>
-      <p class="score">{ind['score']}</p>
+      <p style="font-size:40px;font-weight:500;color:#FAC775;margin:0;line-height:1.2">{ind['score']}<span style="font-size:15px;color:#AFA9EC"> / 100 · {ind['label']}</span></p>
       <p class="big">{MOON_HOUSE_MEANING[ind['house']]}</p>
       <p class="muted">Why: the Moon is in {ind['moon_nak']}, giving {html.escape(pname)} a
       {ind['tara']} tara ({tara_word}). It's in the {ordinal(ind['chandra'])} sign from the natal
       Moon ({chandra_word}) and the {ordinal(ind['house'])} house of the chart.</p></div>""",
                 unsafe_allow_html=True)
+      with st.expander("What does this score mean?"):
+        bands = [(85, 100, "Strong day", "Good for important starts, key meetings and decisions."),
+                 (70, 84, "Steady day", "Good for regular work, follow-ups and steady progress."),
+                 (55, 69, "Gentle day", "Keep plans simple. Finish things rather than start new ones."),
+                 (45, 54, "Quiet, reflective day", "Rest, plan and reflect. Avoid rushing big decisions.")]
+        for lo, hi, band_name, meaning in bands:
+            if lo <= ind["score"] <= hi:
+                st.markdown(f"**→ {lo}–{hi} · {band_name} (today):** {meaning}")
+            else:
+                st.markdown(f"{lo}–{hi} · {band_name}: {meaning}")
+        st.caption("How it's calculated: the score starts at 45 and adds points from three traditional "
+                   "checks of today's Moon: Tara Bala, today's nakshatra counted from your birth star "
+                   "(up to 20); Chandra Bala, today's Moon sign counted from your birth Moon (20); and "
+                   "the house the Moon moves through in your chart (15). There are no bad days, only "
+                   "days suited to different things.")
 
     tips_cache = st.session_state.setdefault("tips", {})
     tip_key = f"{pid}|{today}"
@@ -975,7 +997,7 @@ with match:
                 verdict = ("Excellent" if total >= 32 else "Very good" if total >= 25
                            else "Good" if total >= 18 else "Needs understanding and effort")
                 st.markdown(f"""<div class="card"><p class="muted">Ashtakoot Guna Milan</p>
-                  <p class="score">{total:g} / 36</p><p class="big">{verdict}</p>
+                  <p style="font-size:40px;font-weight:500;color:#FAC775;margin:0;line-height:1.2">{total:g}<span style="font-size:15px;color:#AFA9EC"> / 36</span></p><p class="big">{verdict}</p>
                   <p class="muted">18+ is traditionally considered suitable. A score is one view;
                   the full charts and the two people matter more.</p></div>""", unsafe_allow_html=True)
                 st.dataframe([{"Koota": r[0], "Score": f"{r[1]:g} / {r[2]}", "What it reflects": r[3]}
