@@ -1994,8 +1994,7 @@ _, f1, f2, _ = st.columns([1, 2, 2, 1])
 if f1.button(t("edit_chart"), use_container_width=True):
     st.session_state.mode = "edit"
     st.rerun()
-_, f1, f2, _ = st.columns([1, 2, 2, 1])
-if f1.button(t("edit_chart"), use_container_width=True):
+if f2.button(t("sign_out"), use_container_width=True):
     try:
         auth_client().auth.sign_out()
     except Exception:
