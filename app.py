@@ -1533,8 +1533,8 @@ def auth_screen():
             try:
                 res = auth_client().auth.sign_in_with_password({"email": email.strip(), "password": pw})
                 logged_in = {"email": res.user.email}
-            except Exception:
-                st.error(t("signin_failed"))
+            except Exception as ex:
+                st.error(f"{t('signin_failed')} ({ex})")
         st.caption(t("email_hint"))
     with tab_up:
         email2 = st.text_input(t("email"), key="su_email", autocomplete="email")
