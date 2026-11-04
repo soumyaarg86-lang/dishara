@@ -1530,11 +1530,20 @@ def auth_screen():
         email = st.text_input(t("email"), key="si_email", autocomplete="email")
         pw = st.text_input(t("password"), type="password", key="si_pw", autocomplete="current-password")
         if st.button(t("tab_signin"), key="si_btn"):
-            try:
-                res = auth_client().auth.sign_in_with_password({"email": email.strip(), "password": pw})
-                logged_in = {"email": res.user.email}
-            except Exception as ex:
-                st.error(f"{t('signin_failed')} ({ex})")
+            if not email.strip() or not pw:
+                st.warning(pick((
+                    "Your browser filled in the boxes, but the app didn't receive them. Please click inside "
+                    "the Email and Password boxes (or press Tab through them), then click Sign in again.",
+                    "आपके ब्राउज़र ने बॉक्स भर दिए, लेकिन ऐप तक जानकारी नहीं पहुँची। कृपया ईमेल और पासवर्ड बॉक्स में "
+                    "एक बार क्लिक करें (या Tab दबाएँ), फिर दोबारा साइन इन दबाएँ।",
+                    "আপনার ব্রাউজার বাক্সগুলি পূরণ করেছে, কিন্তু অ্যাপ তথ্যটি পায়নি। অনুগ্রহ করে ইমেল ও পাসওয়ার্ড বাক্সে "
+                    "একবার ক্লিক করুন (বা Tab চাপুন), তারপর আবার সাইন ইন চাপুন।")))
+            else:
+                try:
+                    res = auth_client().auth.sign_in_with_password({"email": email.strip(), "password": pw})
+                    logged_in = {"email": res.user.email}
+                except Exception:
+                    st.error(t("signin_failed"))
         st.caption(t("email_hint"))
     with tab_up:
         email2 = st.text_input(t("email"), key="su_email", autocomplete="email")
