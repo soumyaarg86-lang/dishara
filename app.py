@@ -34,19 +34,37 @@ T = {
     "tagline": ("Your stars, your direction.<br>Every night ends in a sunrise.",
                 "आपके सितारे, आपकी दिशा।<br>हर रात के बाद सवेरा होता है।",
                 "আপনার তারা, আপনার দিশা।<br>প্রতিটি রাতের শেষে আসে ভোর।"),
-    "signin_intro": ("Sign in with your Google account. Your charts and conversations are saved safely to it.",
-                     "अपने Google खाते से साइन इन करें। आपकी कुंडलियाँ और बातचीत उसी में सुरक्षित रहेंगी।",
-                     "আপনার Google অ্যাকাউন্ট দিয়ে সাইন ইন করুন। আপনার কুণ্ডলী ও কথোপকথন সেখানে নিরাপদে সংরক্ষিত থাকবে।"),
+    "signin_intro": ("Sign in with your email to save your charts and conversations.",
+                     "अपनी कुंडलियाँ और बातचीत सहेजने के लिए ईमेल से साइन इन करें।",
+                     "আপনার কুণ্ডলী ও কথোপকথন সংরক্ষণ করতে ইমেল দিয়ে সাইন ইন করুন।"),
+    "tab_signin": ("Sign in", "साइन इन", "সাইন ইন"),
+    "tab_signup": ("Create account", "खाता बनाएँ", "অ্যাকাউন্ট তৈরি করুন"),
+    "email": ("Email", "ईमेल", "ইমেল"),
+    "password": ("Password", "पासवर्ड", "পাসওয়ার্ড"),
+    "password_new": ("Password (at least 8 characters)", "पासवर्ड (कम से कम 8 अक्षर)", "পাসওয়ার্ড (কমপক্ষে 8 অক্ষর)"),
+    "email_hint": ("Your browser can remember your email for next time. To use a different one, just type it in.",
+                   "आपका ब्राउज़र अगली बार के लिए आपका ईमेल याद रख सकता है। दूसरा ईमेल इस्तेमाल करने के लिए बस उसे टाइप करें।",
+                   "আপনার ব্রাউজার পরের বারের জন্য আপনার ইমেল মনে রাখতে পারে। অন্য ইমেল ব্যবহার করতে শুধু সেটি টাইপ করুন।"),
+    "signin_failed": ("Couldn't sign in. Check your email and password.",
+                      "साइन इन नहीं हो सका। अपना ईमेल और पासवर्ड जाँचें।",
+                      "সাইন ইন করা যায়নি। আপনার ইমেল ও পাসওয়ার্ড দেখুন।"),
+    "pw_short": ("Please use a password of at least 8 characters.",
+                 "कृपया कम से कम 8 अक्षरों का पासवर्ड रखें।",
+                 "অনুগ্রহ করে কমপক্ষে 8 অক্ষরের পাসওয়ার্ড দিন।"),
+    "need_consent": ("Please tick the consent box to continue.",
+                     "आगे बढ़ने के लिए कृपया सहमति बॉक्स पर टिक करें।",
+                     "এগিয়ে যেতে অনুগ্রহ করে সম্মতির বাক্সে টিক দিন।"),
+    "check_email": ("Account created. Check your email to confirm, then sign in.",
+                    "खाता बन गया। पुष्टि के लिए अपना ईमेल देखें, फिर साइन इन करें।",
+                    "অ্যাকাউন্ট তৈরি হয়েছে। নিশ্চিত করতে ইমেল দেখুন, তারপর সাইন ইন করুন।"),
+    "signup_failed": ("Couldn't create the account: {err}", "खाता नहीं बन सका: {err}", "অ্যাকাউন্ট তৈরি করা যায়নি: {err}"),
+    "privacy_link": ("Privacy policy", "गोपनीयता नीति", "গোপনীয়তা নীতি"),
     "consent": ("I agree that Dishara can store birth details and conversations to personalise guidance. "
                 "I can ask for them to be deleted anytime.",
                 "मैं सहमत हूँ कि दिशारा व्यक्तिगत मार्गदर्शन के लिए जन्म विवरण और बातचीत सहेज सकती है। "
                 "मैं कभी भी इन्हें हटाने का अनुरोध कर सकता/सकती हूँ।",
                 "আমি সম্মত যে দিশারা ব্যক্তিগত পরামর্শের জন্য জন্মের তথ্য ও কথোপকথন সংরক্ষণ করতে পারে। "
                 "আমি যেকোনো সময় এগুলি মুছে ফেলার অনুরোধ করতে পারি।"),
-    "continue_google": ("Continue with Google", "Google से आगे बढ़ें", "Google দিয়ে এগিয়ে যান"),
-    "google_hint": ("Google will show the accounts saved on this device. Pick yours, or choose 'Use another account'.",
-                    "Google इस डिवाइस पर सहेजे गए खाते दिखाएगा। अपना खाता चुनें, या 'Use another account' चुनें।",
-                    "Google এই ডিভাইসে সংরক্ষিত অ্যাকাউন্টগুলি দেখাবে। আপনারটি বেছে নিন, অথবা 'Use another account' বেছে নিন।"),
     "edit_birth": ("Edit birth details", "जन्म विवरण बदलें", "জন্মের তথ্য সম্পাদনা করুন"),
     "add_chart_title": ("Add a birth chart", "नई कुंडली जोड़ें", "নতুন কুণ্ডলী যোগ করুন"),
     "name": ("Name", "नाम", "নাম"),
@@ -430,6 +448,7 @@ h1, h2, h3, h4 {font-family:'Cormorant Garamond','Noto Serif Devanagari','Noto S
 BIG_NUMBER = "font-size:40px;font-weight:500;color:#FAC775;margin:0;line-height:1.2"
 SMALL_SUFFIX = "font-size:15px;color:#AFA9EC"
 
+# ---------------- PRIVACY POLICY PAGE (dishara.streamlit.app/?page=privacy) ----------------
 PRIVACY_POLICY = """
 # Dishara Privacy Policy
 *Last updated: 5 November 2026*
@@ -437,7 +456,7 @@ PRIVACY_POLICY = """
 Dishara ("we") is a Vedic astrology guidance app. This policy explains what we collect and how we use it.
 
 **What we collect**
-- Your Google account name and email address, when you sign in.
+- Your email address, when you create an account.
 - Birth details you enter for yourself or others: name, relationship, birth date, birth time and birth place.
 - Your questions to Dishara and the answers it gives, your daily tips, and your language preference.
 
@@ -452,7 +471,7 @@ details are sent to Google. During our beta we use Gemini's free tier, under whi
 content to improve its products. Please don't include sensitive personal information you don't want shared.
 
 **Where data is stored**
-Your data is stored securely with Supabase (database) and the app is hosted on Streamlit Community Cloud.
+Your data is stored with Supabase (database) and the app is hosted on Streamlit Community Cloud.
 Access is restricted so that each signed-in user can only see their own data.
 
 **Your choices and rights**
@@ -468,19 +487,27 @@ Dishara is intended for users aged 18 and over.
 We may update this policy and will show the new date above.
 
 **Contact**
-your-soumya.arg86@gmail.com
+your-email@gmail.com
 """
 
 if st.query_params.get("page") == "privacy":
     st.markdown(PRIVACY_POLICY)
-    st.stop()  
+    st.stop()
+
 # ---------------- SECRETS & DATABASE ----------------
 def secret(name):
     return os.environ.get(name) or st.secrets[name]
 
 @st.cache_resource
 def db():
+    # Server-side database client (secret key never reaches the browser)
     return create_client(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_KEY"))
+
+def auth_client():
+    # Separate client using the public key, only for sign-in; one per visitor
+    if "sb_auth" not in st.session_state:
+        st.session_state.sb_auth = create_client(secret("SUPABASE_URL"), secret("SUPABASE_KEY"))
+    return st.session_state.sb_auth
 
 def get_or_create_user(email, name, lang):
     email = email.strip().lower()
@@ -604,10 +631,10 @@ AREAS = {
 }
 AREA_KEYWORDS = {
     "career": ["career", "job", "work", "promotion", "business", "office", "boss", "interview", "startup",
-               "naukri", "kaam", "नौकरी", "करियर", "व्यवसाय", "काम", "चाकरी", "চাকরি", "কর্মজীবন",
+               "naukri", "kaam", "नौकरी", "करियर", "व्यवसाय", "काम", "চাকরি", "কর্মজীবন",
                "কাজ", "ব্যবসা", "পদোন্নতি", "অফিস"],
     "money": ["money", "wealth", "finance", "income", "salary", "saving", "invest", "loan", "debt", "paisa",
-              "dhan", "पैसा", "धन", "आय", "वेतन", "टাকা", "টাকা", "অর্থ", "আয়", "বেতন", "সম্পদ", "ঋণ"],
+              "dhan", "पैसा", "धन", "आय", "वेतन", "টাকা", "অর্থ", "আয়", "বেতন", "সম্পদ", "ঋণ"],
     "marriage": ["marriage", "marry", "wedding", "spouse", "husband", "wife", "partner", "relationship",
                  "love", "girlfriend", "boyfriend", "shaadi", "shadi", "vivah", "biye", "शादी", "विवाह",
                  "प्रेम", "पति", "पत्नी", "रिश्ता", "বিয়ে", "বিবাহ", "স্বামী", "স্ত্রী", "প্রেম", "সম্পর্ক"],
@@ -1340,7 +1367,6 @@ def manglik(chart):
     return from_lagna, from_moon
 
 def manglik_text(from_lagna, from_moon):
-    """English version, used inside the AI prompt."""
     lt = "unknown (no birth time)" if from_lagna is None else ("yes" if from_lagna else "no")
     return f"from Lagna: {lt}; from Moon: {'yes' if from_moon else 'no'}"
 
@@ -1381,11 +1407,9 @@ def search_places(q):
 # ---------------- SAFETY & AI ----------------
 CRISIS_WORDS = ["suicide", "kill myself", "end my life", "want to die", "self harm", "self-harm",
                 "hurt myself", "no reason to live",
-                # Hindi (Devanagari and romanised)
                 "आत्महत्या", "मरना चाहता", "मरना चाहती", "मर जाना चाहता", "मर जाना चाहती",
                 "जीना नहीं चाहता", "जीना नहीं चाहती", "खुद को खत्म", "खुद को नुकसान",
                 "marna chahta", "marna chahti", "jeena nahi chahta", "jeena nahi chahti", "khud ko khatam",
-                # Bengali (Bengali script and romanised)
                 "আত্মহত্যা", "মরে যেতে চাই", "বাঁচতে চাই না", "নিজেকে শেষ করে", "নিজের ক্ষতি",
                 "more jete chai", "bachte chai na"]
 
@@ -1500,10 +1524,41 @@ def auth_screen():
     hero()
     lang_picker(key="lang_pick_auth")
     st.markdown(f"<p class='muted' style='text-align:center'>{t('signin_intro')}</p>", unsafe_allow_html=True)
-    consent = st.checkbox(t("consent"))
-    if st.button(t("continue_google"), disabled=not consent):
-        st.login()
-    st.caption(t("google_hint"))
+    tab_in, tab_up = st.tabs([t("tab_signin"), t("tab_signup")])
+    logged_in = None
+    with tab_in:
+        email = st.text_input(t("email"), key="si_email", autocomplete="email")
+        pw = st.text_input(t("password"), type="password", key="si_pw", autocomplete="current-password")
+        if st.button(t("tab_signin"), key="si_btn"):
+            try:
+                res = auth_client().auth.sign_in_with_password({"email": email.strip(), "password": pw})
+                logged_in = {"email": res.user.email}
+            except Exception:
+                st.error(t("signin_failed"))
+        st.caption(t("email_hint"))
+    with tab_up:
+        email2 = st.text_input(t("email"), key="su_email", autocomplete="email")
+        pw2 = st.text_input(t("password_new"), type="password", key="su_pw", autocomplete="new-password")
+        consent = st.checkbox(t("consent"))
+        if st.button(t("tab_signup"), key="su_btn"):
+            if len(pw2) < 8:
+                st.error(t("pw_short"))
+            elif not consent:
+                st.error(t("need_consent"))
+            else:
+                try:
+                    res = auth_client().auth.sign_up({"email": email2.strip(), "password": pw2})
+                    if res.session:
+                        logged_in = {"email": res.user.email}
+                    else:
+                        st.success(t("check_email"))
+                except Exception as ex:
+                    st.error(t("signup_failed", err=ex))
+    st.markdown(f"<p class='muted' style='text-align:center'><a href='?page=privacy' target='_blank' "
+                f"style='color:#AFA9EC'>{t('privacy_link')}</a></p>", unsafe_allow_html=True)
+    if logged_in:
+        st.session_state.user = logged_in
+        st.rerun()
 
 def chart_form(uid, existing):
     hero()
@@ -1597,12 +1652,13 @@ def chart_form(uid, existing):
             st.rerun()
 
 # ---------------- APP FLOW ----------------
-if not st.user.is_logged_in:
+if "user" not in st.session_state:
     auth_screen()
     st.stop()
 
+user_email = st.session_state.user["email"]
 if "uid" not in st.session_state:
-    uid0, saved_lang = get_or_create_user(st.user.email, st.user.get("name"), L())
+    uid0, saved_lang = get_or_create_user(user_email, None, L())
     st.session_state.uid = uid0
     st.session_state.ui_lang = saved_lang if saved_lang in LANG_CODES else "en"
 uid = st.session_state.uid
@@ -1922,12 +1978,19 @@ if "paste-your-link" not in FEEDBACK_URL:
     st.markdown(f"<p class='muted' style='text-align:center'>{t('feedback')} "
                 f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>{t('feedback_link')}</a></p>",
                 unsafe_allow_html=True)
-st.markdown(f"<p class='muted' style='text-align:center'>{t('signed_in', email=html.escape(st.user.email))}</p>",
+st.markdown(f"<p class='muted' style='text-align:center'>{t('signed_in', email=html.escape(user_email))} · "
+            f"<a href='?page=privacy' target='_blank' style='color:#AFA9EC'>{t('privacy_link')}</a></p>",
             unsafe_allow_html=True)
 f1, f2 = st.columns(2)
 if f1.button(t("edit_chart")):
     st.session_state.mode = "edit"
     st.rerun()
 if f2.button(t("sign_out")):
+    try:
+        auth_client().auth.sign_out()
+    except Exception:
+        pass
+    keep_lang = L()
     st.session_state.clear()
-    st.logout()
+    st.session_state.ui_lang = keep_lang
+    st.rerun()
