@@ -10,6 +10,8 @@ from google.genai import types, errors
 
 st.set_page_config(page_title="Dishara", page_icon="🌅", layout="centered")
 
+FEEDBACK_URL = "https://forms.gle/paste-your-link-here"
+
 # ---------------- STYLE ----------------
 st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Poppins:wght@300;400;500&display=swap');
@@ -89,6 +91,28 @@ def vimshottari(moon_lon, birth_utc):
         start = end
     return periods
 
+def antardashas(md):
+    years = dict(DASHA_ORDER)
+    lords = [l for l, _ in DASHA_ORDER]
+    i0 = lords.index(md["lord"])
+    start, out = md["start"], []
+    for k in range(9):
+        lord = lords[(i0 + k) % 9]
+        end = start + timedelta(days=years[md["lord"]] * years[lord] / 120 * 365.25)
+        out.append({"md": md["lord"], "lord": lord, "start": start, "end": end})
+        start = end
+    return out
+
+def upcoming_subperiods(chart, now, count=8):
+    out = []
+    for md in chart["dashas"]:
+        if md["end"] < now:
+            continue
+        for ad in antardashas(md):
+            if ad["end"] >= now and len(out) < count:
+                out.append(ad)
+    return out
+
 def compute_chart(local_dt, lat, lng):
     utc = local_dt - timedelta(hours=IST)
     jd = julian_day(utc)
@@ -122,6 +146,9 @@ def chart_text(chart, now):
     for d in chart["dashas"]:
         tag = " (CURRENT)" if d["start"] <= now < d["end"] else ""
         lines.append(f"Mahadasha {d['lord']}: {d['start']:%b %Y} to {d['end']:%b %Y}{tag}")
+    for ad in upcoming_subperiods(chart, now):
+        tag = " (CURRENT)" if ad["start"] <= now < ad["end"] else ""
+        lines.append(f"Sub-period {ad['md']}-{ad['lord']}: {ad['start']:%b %Y} to {ad['end']:%b %Y}{tag}")
     lines.append(f"Today's date: {now:%d %b %Y}")
     lines.append(f"Today's Moon transit: house {moon_today_house(chart, now)} from Lagna")
     return "\n".join(lines)
@@ -171,8 +198,9 @@ RULES:
    strengths. Only if the person sounds distressed or hopeless, keep astrology to a
    line or two, put support first, and suggest Tele-MANAS at 14416 (free, 24/7).
    Don't describe it as confidential.
-7. Keep answers under 180 words, simple words, explain any jargon.
-8. Reply in {lang}. Write your own name correctly in that language's script."""
+7. For timing questions, use the sub-periods (Mahadasha-Antardasha) and name them.
+8. Keep answers under 180 words, simple words, explain any jargon.
+9. Reply in {lang}. Write your own name correctly in that language's script."""
 
 # ---------------- AI ----------------
 @st.cache_resource
@@ -273,6 +301,10 @@ with home:
     st.markdown(f"""<div class="card"><p class="muted">Your current chapter · until {cur['end']:%b %Y}</p>
       <p class="big">{cur['lord']} Mahadasha: {CHAPTER_THEME[cur['lord']]}</p>
       <div class="bar"><div style="width:{pct}%"></div></div></div>""", unsafe_allow_html=True)
+    sub = upcoming_subperiods(chart, now, 1)[0]
+    st.markdown(f"""<div class="card"><p class="muted">Current sub-period · until {sub['end']:%b %Y}</p>
+      <p class="big">{sub['md']}–{sub['lord']}: {CHAPTER_THEME[sub['lord']]}</p></div>""",
+                unsafe_allow_html=True)
     if st.button("Show my natural strengths"):
         with st.spinner("Dishara is reading your chart..."):
             st.session_state.strengths = ask_dishara(
@@ -317,6 +349,10 @@ with kundali:
         st.markdown(f"**{d['lord']}** · {d['start']:%b %Y} – {d['end']:%b %Y}{mark}")
 
 st.divider()
+if "paste-your-link" not in FEEDBACK_URL:
+    st.markdown(f"<p class='muted' style='text-align:center'>Help shape Dishara: "
+                f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>share your feedback</a></p>",
+                unsafe_allow_html=True)
 if st.button("Start over with new details"):
     st.session_state.clear()
     st.rerun()
