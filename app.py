@@ -13,15 +13,409 @@ from supabase import create_client
 st.set_page_config(page_title="Dishara", page_icon="🌅", layout="centered")
 
 FEEDBACK_URL = "https://forms.gle/paste-your-link-here"
-LANGUAGES = ["English", "Hindi", "Kannada", "Tamil", "Telugu", "Marathi", "Bengali", "Gujarati"]
 RELATIONS = ["Self", "Spouse / Partner", "Mother", "Father", "Son", "Daughter",
              "Sibling", "Friend", "Other"]
+CHART_VERSION = 4
+
+# =====================================================================
+# LANGUAGES & TRANSLATIONS
+# =====================================================================
+LANG_CODES = {"en": "English", "hi": "हिन्दी", "bn": "বাংলা"}
+ANSWER_LANG = {"en": "English", "hi": "Hindi", "bn": "Bengali"}
+LI = {"en": 0, "hi": 1, "bn": 2}
+
+def L():
+    return st.session_state.get("ui_lang", "en")
+
+def pick(tup):
+    return tup[LI[L()]]
+
+T = {
+    "tagline": ("Your stars, your direction.<br>Every night ends in a sunrise.",
+                "आपके सितारे, आपकी दिशा।<br>हर रात के बाद सवेरा होता है।",
+                "আপনার তারা, আপনার দিশা।<br>প্রতিটি রাতের শেষে আসে ভোর।"),
+    "signin_intro": ("Sign in with your Google account. Your charts and conversations are saved safely to it.",
+                     "अपने Google खाते से साइन इन करें। आपकी कुंडलियाँ और बातचीत उसी में सुरक्षित रहेंगी।",
+                     "আপনার Google অ্যাকাউন্ট দিয়ে সাইন ইন করুন। আপনার কুণ্ডলী ও কথোপকথন সেখানে নিরাপদে সংরক্ষিত থাকবে।"),
+    "consent": ("I agree that Dishara can store birth details and conversations to personalise guidance. "
+                "I can ask for them to be deleted anytime.",
+                "मैं सहमत हूँ कि दिशारा व्यक्तिगत मार्गदर्शन के लिए जन्म विवरण और बातचीत सहेज सकती है। "
+                "मैं कभी भी इन्हें हटाने का अनुरोध कर सकता/सकती हूँ।",
+                "আমি সম্মত যে দিশারা ব্যক্তিগত পরামর্শের জন্য জন্মের তথ্য ও কথোপকথন সংরক্ষণ করতে পারে। "
+                "আমি যেকোনো সময় এগুলি মুছে ফেলার অনুরোধ করতে পারি।"),
+    "continue_google": ("Continue with Google", "Google से आगे बढ़ें", "Google দিয়ে এগিয়ে যান"),
+    "google_hint": ("Google will show the accounts saved on this device. Pick yours, or choose 'Use another account'.",
+                    "Google इस डिवाइस पर सहेजे गए खाते दिखाएगा। अपना खाता चुनें, या 'Use another account' चुनें।",
+                    "Google এই ডিভাইসে সংরক্ষিত অ্যাকাউন্টগুলি দেখাবে। আপনারটি বেছে নিন, অথবা 'Use another account' বেছে নিন।"),
+    "edit_birth": ("Edit birth details", "जन्म विवरण बदलें", "জন্মের তথ্য সম্পাদনা করুন"),
+    "add_chart_title": ("Add a birth chart", "नई कुंडली जोड़ें", "নতুন কুণ্ডলী যোগ করুন"),
+    "name": ("Name", "नाम", "নাম"),
+    "whose_chart": ("Whose chart is this?", "यह किसकी कुंडली है?", "এটি কার কুণ্ডলী?"),
+    "birth_date": ("Birth date", "जन्म तिथि", "জন্ম তারিখ"),
+    "unknown_time": ("I don't know the exact birth time", "मुझे सही जन्म समय नहीं पता", "আমি সঠিক জন্মসময় জানি না"),
+    "time_hint": ("Birth time (you can type to jump, e.g. 7 or 45)",
+                  "जन्म समय (टाइप करके सीधे चुन सकते हैं, जैसे 7 या 45)",
+                  "জন্মসময় (টাইপ করে সরাসরি বেছে নিতে পারেন, যেমন 7 বা 45)"),
+    "hour": ("Hour", "घंटा", "ঘণ্টা"),
+    "minute": ("Minute", "मिनट", "মিনিট"),
+    "ampm": ("AM / PM", "AM / PM", "AM / PM"),
+    "unknown_caption": ("No problem. Dishara will read the Moon chart, which is still very meaningful.",
+                        "कोई बात नहीं। दिशारा चंद्र कुंडली पढ़ेगी, जो फिर भी बहुत सार्थक है।",
+                        "কোনো অসুবিধা নেই। দিশারা চন্দ্র কুণ্ডলী পড়বে, যা এখনও খুবই অর্থবহ।"),
+    "current_place": ("Current birth place: {place}", "वर्तमान जन्म स्थान: {place}", "বর্তমান জন্মস্থান: {place}"),
+    "place_label": ("Birth place: type the town or city and press Enter",
+                    "जन्म स्थान: शहर या कस्बे का नाम अंग्रेज़ी में लिखें और Enter दबाएँ",
+                    "জন্মস্থান: শহর বা নগরের নাম ইংরেজিতে লিখে Enter চাপুন"),
+    "place_ph": ("e.g. Mysuru", "जैसे Varanasi", "যেমন Kolkata"),
+    "finding_places": ("Finding places...", "स्थान खोजे जा रहे हैं...", "স্থান খোঁজা হচ্ছে..."),
+    "select_place": ("Select the birth place", "जन्म स्थान चुनें", "জন্মস্থান বেছে নিন"),
+    "choose_place": ("Choose the correct place", "सही स्थान चुनें", "সঠিক স্থানটি বেছে নিন"),
+    "no_match": ("No match found. Check the spelling, or try the nearest bigger town.",
+                 "कोई स्थान नहीं मिला। वर्तनी जाँचें, या पास का बड़ा शहर आज़माएँ।",
+                 "কোনো মিল পাওয়া যায়নি। বানান দেখুন, অথবা কাছের বড় শহরের নাম দিন।"),
+    "save_chart": ("Save chart", "कुंडली सहेजें", "কুণ্ডলী সংরক্ষণ করুন"),
+    "please_add": ("Please add: {items}.", "कृपया जोड़ें: {items}।", "অনুগ্রহ করে যোগ করুন: {items}।"),
+    "p_name": ("a name", "नाम", "নাম"),
+    "p_date": ("the birth date", "जन्म तिथि", "জন্ম তারিখ"),
+    "p_time": ("hour, minute and AM/PM", "घंटा, मिनट और AM/PM", "ঘণ্টা, মিনিট ও AM/PM"),
+    "p_place": ("the birth place (pick one from the list)", "जन्म स्थान (सूची से चुनें)", "জন্মস্থান (তালিকা থেকে বেছে নিন)"),
+    "save_failed": ("Couldn't save the chart: {err}", "कुंडली सहेजी नहीं जा सकी: {err}", "কুণ্ডলী সংরক্ষণ করা যায়নি: {err}"),
+    "cancel": ("Cancel", "रद्द करें", "বাতিল"),
+    "delete_confirm": ("Yes, permanently delete {name}'s chart and its conversations",
+                       "हाँ, {name} की कुंडली और उसकी बातचीत स्थायी रूप से हटाएँ",
+                       "হ্যাঁ, {name}-এর কুণ্ডলী ও কথোপকথন স্থায়ীভাবে মুছে ফেলুন"),
+    "delete_chart": ("Delete this chart", "यह कुंडली हटाएँ", "এই কুণ্ডলী মুছুন"),
+    "shubh_din": ("Shubh din", "शुभ दिन", "শুভ দিন"),
+    "namaste": ("Namaste, {name}", "नमस्ते, {name}", "নমস্কার, {name}"),
+    "viewing_chart": ("Viewing chart", "देखी जा रही कुंडली", "যে কুণ্ডলী দেখছেন"),
+    "add_chart_btn": ("+ Add chart", "+ कुंडली जोड़ें", "+ কুণ্ডলী যোগ"),
+    "tab_home": ("Home", "होम", "হোম"),
+    "tab_ask": ("Ask Dishara", "दिशारा से पूछें", "দিশারাকে জিজ্ঞাসা"),
+    "tab_kundali": ("Kundali", "कुंडली", "কুণ্ডলী"),
+    "tab_match": ("Match Making", "कुंडली मिलान", "কোষ্ঠী মিলন"),
+    "todays_energy": ("Today's energy · {date}", "आज की ऊर्जा · {date}", "আজকের শক্তি · {date}"),
+    "why_score": ("Why: the Moon is in {nak}, giving {name} a {tara} tara ({tara_word}). It's in the {ch} sign "
+                  "from the natal Moon ({ch_word}) and the {house} house of the chart.",
+                  "कारण: चंद्रमा {nak} नक्षत्र में है, जिससे {name} के लिए {tara} तारा बनती है ({tara_word})। "
+                  "यह जन्म चंद्र से {ch} राशि में है ({ch_word}) और कुंडली के {house} भाव में है।",
+                  "কারণ: চন্দ্র {nak} নক্ষত্রে আছে, যা {name}-এর জন্য {tara} তারা তৈরি করে ({tara_word})। "
+                  "এটি জন্মচন্দ্র থেকে {ch} রাশিতে ({ch_word}) এবং কুণ্ডলীর {house} ভাবে আছে।"),
+    "av_line": (" Ashtakavarga gives the Moon {b} of 8 points in today's sign.",
+                " अष्टकवर्ग में आज की राशि में चंद्रमा को 8 में से {b} अंक मिलते हैं।",
+                " অষ্টকবর্গে আজকের রাশিতে চন্দ্র 8-এর মধ্যে {b} বিন্দু পায়।"),
+    "tw_support": ("supportive", "सहायक", "সহায়ক"),
+    "tw_reflect": ("a reflective day", "चिंतन का दिन", "চিন্তনের দিন"),
+    "tw_gentle": ("a day to go gently", "धीरे चलने का दिन", "ধীরে চলার দিন"),
+    "cw_good": ("favourable", "अनुकूल", "অনুকূল"),
+    "cw_patience": ("asks for patience", "धैर्य माँगता है", "ধৈর্য চায়"),
+    "score_expander": ("What does this score mean?", "इस स्कोर का क्या अर्थ है?", "এই স্কোরের অর্থ কী?"),
+    "today_tag": ("today", "आज", "আজ"),
+    "about_score": ("About this score", "इस स्कोर के बारे में", "এই স্কোর সম্পর্কে"),
+    "about1": ("The score is set once each morning (6 AM IST) and stays the same all day. It combines three classical "
+               "Vedic checks of the Moon: Tara Bala, today's nakshatra counted from your birth star (up to 20 points); "
+               "Chandra Bala, today's Moon sign counted from your birth Moon (20); and Ashtakavarga, the Moon's "
+               "classical point score (0 to 8) in the sign it's moving through (up to 15). If the birth time is "
+               "unknown, the third check uses the Moon's house instead.",
+               "यह स्कोर हर सुबह (भारतीय समय 6 बजे) एक बार तय होता है और पूरे दिन वही रहता है। इसमें चंद्रमा की तीन "
+               "शास्त्रीय वैदिक जाँचें शामिल हैं: तारा बल, यानी जन्म नक्षत्र से आज के नक्षत्र की गिनती (20 अंक तक); "
+               "चंद्र बल, यानी जन्म चंद्र से आज की चंद्र राशि की गिनती (20); और अष्टकवर्ग, यानी जिस राशि से चंद्रमा "
+               "गुज़र रहा है उसमें उसके शास्त्रीय अंक (0 से 8), जिनसे 15 अंक तक मिलते हैं। जन्म समय अज्ञात हो तो "
+               "तीसरी जाँच में चंद्रमा का भाव देखा जाता है।",
+               "স্কোরটি প্রতিদিন সকালে একবার (ভারতীয় সময় সকাল 6টা) নির্ধারিত হয় এবং সারাদিন একই থাকে। এতে চন্দ্রের "
+               "তিনটি শাস্ত্রীয় বৈদিক পরীক্ষা রয়েছে: তারা বল, অর্থাৎ জন্মনক্ষত্র থেকে আজকের নক্ষত্রের গণনা (20 পর্যন্ত); "
+               "চন্দ্র বল, অর্থাৎ জন্মচন্দ্র থেকে আজকের চন্দ্ররাশির গণনা (20); এবং অষ্টকবর্গ, অর্থাৎ চন্দ্র যে রাশিতে "
+               "আছে সেখানে তার শাস্ত্রীয় বিন্দু (0 থেকে 8), যা থেকে 15 পর্যন্ত পাওয়া যায়। জন্মসময় অজানা হলে তৃতীয় "
+               "পরীক্ষায় চন্দ্রের ভাব দেখা হয়।"),
+    "about2": ("Method updated on 5 Nov 2026 to use Ashtakavarga and to stay fixed through the day. Think of it as a "
+               "gentle guide to the day's mood, not a fixed prediction. There are no bad days, only days suited to "
+               "different things.",
+               "5 नवंबर 2026 को पद्धति अपडेट की गई: अब इसमें अष्टकवर्ग शामिल है और स्कोर पूरे दिन स्थिर रहता है। इसे "
+               "दिन के मिज़ाज का एक सौम्य संकेत मानें, कोई निश्चित भविष्यवाणी नहीं। कोई दिन बुरा नहीं होता, हर दिन "
+               "अलग कामों के लिए उपयुक्त होता है।",
+               "5 নভেম্বর 2026-এ পদ্ধতি হালনাগাদ করা হয়েছে: এখন এতে অষ্টকবর্গ ব্যবহৃত হয় এবং স্কোর সারাদিন স্থির থাকে। "
+               "এটিকে দিনের মেজাজের একটি কোমল ইঙ্গিত হিসেবে দেখুন, নির্দিষ্ট ভবিষ্যদ্বাণী নয়। কোনো দিনই খারাপ নয়, "
+               "প্রতিটি দিন আলাদা কাজের জন্য উপযুক্ত।"),
+    "preparing_tips": ("Preparing today's personal tips...", "आज के व्यक्तिगत सुझाव तैयार हो रहे हैं...",
+                       "আজকের ব্যক্তিগত পরামর্শ তৈরি হচ্ছে..."),
+    "tips_soon": ("Today's tips will appear shortly. Refresh in a minute.",
+                  "आज के सुझाव जल्द ही दिखेंगे। एक मिनट में रिफ्रेश करें।",
+                  "আজকের পরামর্শ শীঘ্রই দেখা যাবে। এক মিনিট পরে রিফ্রেশ করুন।"),
+    "todays_tips": ("Today's personal tips", "आज के व्यक्तिगत सुझाव", "আজকের ব্যক্তিগত পরামর্শ"),
+    "current_chapter": ("Current chapter · until {date}", "वर्तमान अध्याय · {date} तक", "বর্তমান অধ্যায় · {date} পর্যন্ত"),
+    "mahadasha": ("{lord} Mahadasha: {theme}", "{lord} महादशा: {theme}", "{lord} মহাদশা: {theme}"),
+    "current_sub": ("Current sub-period · until {date}", "वर्तमान अंतर्दशा · {date} तक", "বর্তমান অন্তর্দশা · {date} পর্যন্ত"),
+    "moon_chart_caption": ("Reading from the Moon chart, since the birth time is unknown.",
+                           "जन्म समय अज्ञात होने के कारण चंद्र कुंडली से पढ़ा जा रहा है।",
+                           "জন্মসময় অজানা, তাই চন্দ্র কুণ্ডলী থেকে পড়া হচ্ছে।"),
+    "new_conv": ("New conversation", "नई बातचीत", "নতুন কথোপকথন"),
+    "past_conv": ("Open a past conversation ({n})", "पिछली बातचीत खोलें ({n})", "আগের কথোপকথন খুলুন ({n})"),
+    "ask_intro": ("Ask anything about {name}'s chart: career, relationships, timing, strengths...",
+                  "{name} की कुंडली के बारे में कुछ भी पूछें: करियर, रिश्ते, समय, क्षमताएँ...",
+                  "{name}-এর কুণ্ডলী সম্পর্কে যেকোনো প্রশ্ন করুন: কর্মজীবন, সম্পর্ক, সময়, শক্তি..."),
+    "chat_ph": ("Ask anything about this chart", "इस कुंडली के बारे में कुछ भी पूछें", "এই কুণ্ডলী সম্পর্কে যেকোনো প্রশ্ন করুন"),
+    "thinking": ("Dishara is studying the chart...", "दिशारा कुंडली का अध्ययन कर रही है...", "দিশারা কুণ্ডলী বিশ্লেষণ করছে..."),
+    "chart_select": ("Chart", "चार्ट", "চার্ট"),
+    "chart_caption": ("North Indian style · numbers show the sign in each house",
+                      "उत्तर भारतीय शैली · अंक प्रत्येक भाव की राशि दर्शाते हैं",
+                      "উত্তর ভারতীয় শৈলী · সংখ্যাগুলি প্রতিটি ভাবের রাশি দেখায়"),
+    "chart_caption_moon": (" · Moon chart (birth time unknown; divisional charts need the exact time)",
+                           " · चंद्र कुंडली (जन्म समय अज्ञात; वर्ग कुंडलियों के लिए सही समय चाहिए)",
+                           " · চন্দ্র কুণ্ডলী (জন্মসময় অজানা; বর্গ চার্টের জন্য সঠিক সময় প্রয়োজন)"),
+    "col_planet": ("Planet", "ग्रह", "গ্রহ"),
+    "col_sign": ("Sign", "राशि", "রাশি"),
+    "col_degree": ("Degree", "अंश", "অংশ"),
+    "col_house": ("House", "भाव", "ভাব"),
+    "col_role": ("Role", "भूमिका", "ভূমিকা"),
+    "col_notes": ("Notes", "टिप्पणी", "মন্তব্য"),
+    "col_nak": ("Nakshatra", "नक्षत्र", "নক্ষত্র"),
+    "glossary_title": ("What do Role and Notes mean?", "भूमिका और टिप्पणी का क्या अर्थ है?", "ভূমিকা ও মন্তব্যের অর্থ কী?"),
+    "roles_moon": ("Roles are read from the Moon sign here, since the birth time is unknown.",
+                   "जन्म समय अज्ञात होने के कारण यहाँ भूमिकाएँ चंद्र राशि से पढ़ी गई हैं।",
+                   "জন্মসময় অজানা, তাই এখানে ভূমিকা চন্দ্ররাশি থেকে পড়া হয়েছে।"),
+    "life_areas": ("Life areas at a glance", "जीवन क्षेत्र एक नज़र में", "এক নজরে জীবনের ক্ষেত্রগুলি"),
+    "col_area": ("Area", "क्षेत्र", "ক্ষেত্র"),
+    "col_outlook": ("Outlook", "संभावना", "সম্ভাবনা"),
+    "col_strength": ("Key strength", "मुख्य शक्ति", "প্রধান শক্তি"),
+    "col_dt": ("Next double transit", "अगला दोहरा गोचर", "পরবর্তী দ্বৈত গোচর"),
+    "not_2y": ("Not in next 2 years", "अगले 2 वर्षों में नहीं", "আগামী 2 বছরে নেই"),
+    "areas_caption": ("Outlook is calculated from the house lord's placement and strength, planets in and aspecting "
+                      "the house, the natural significator, the relevant divisional chart and Ashtakavarga. Double "
+                      "transit is when Jupiter and Saturn both influence the area's main house: a classical timing "
+                      "signal. Ask Dishara about any area for the full picture.",
+                      "संभावना की गणना भाव स्वामी की स्थिति और बल, भाव में स्थित और उस पर दृष्टि डालने वाले ग्रहों, "
+                      "प्राकृतिक कारक, संबंधित वर्ग कुंडली और अष्टकवर्ग से की जाती है। दोहरा गोचर तब होता है जब गुरु "
+                      "और शनि दोनों उस क्षेत्र के मुख्य भाव को प्रभावित करते हैं, जो समय का एक शास्त्रीय संकेत है। पूरी "
+                      "जानकारी के लिए दिशारा से किसी भी क्षेत्र के बारे में पूछें।",
+                      "সম্ভাবনা নির্ণয় করা হয় ভাবপতির অবস্থান ও শক্তি, ভাবে থাকা ও দৃষ্টি দেওয়া গ্রহ, প্রাকৃতিক কারক, "
+                      "সংশ্লিষ্ট বর্গ চার্ট এবং অষ্টকবর্গ থেকে। দ্বৈত গোচর হলো যখন বৃহস্পতি ও শনি দুজনেই ক্ষেত্রটির প্রধান "
+                      "ভাবকে প্রভাবিত করে, যা সময় নির্ধারণের একটি শাস্ত্রীয় সংকেত। পূর্ণ চিত্রের জন্য দিশারাকে যেকোনো "
+                      "ক্ষেত্র সম্পর্কে জিজ্ঞাসা করুন।"),
+    "av_title": ("Ashtakavarga strength by house", "भाव अनुसार अष्टकवर्ग बल", "ভাব অনুযায়ী অষ্টকবর্গ শক্তি"),
+    "col_points": ("Points", "अंक", "বিন্দু"),
+    "col_av_strength": ("Strength", "बल", "শক্তি"),
+    "av_strong": ("Strong", "मज़बूत", "শক্তিশালী"),
+    "av_avg": ("Average", "औसत", "মাঝারি"),
+    "av_build": ("Build steadily", "धीरे-धीरे बनाएँ", "ধীরে ধীরে গড়ে তুলুন"),
+    "av_caption": ("Classical point system: 28 or more is strong, 25 to 27 average, below 25 asks for steady effort. "
+                   "Total: {total} (always 337 when calculated correctly).",
+                   "शास्त्रीय अंक प्रणाली: 28 या अधिक मज़बूत, 25 से 27 औसत, 25 से कम पर निरंतर प्रयास चाहिए। "
+                   "कुल: {total} (सही गणना में हमेशा 337)।",
+                   "শাস্ত্রীয় বিন্দু পদ্ধতি: 28 বা তার বেশি শক্তিশালী, 25 থেকে 27 মাঝারি, 25-এর নিচে নিয়মিত প্রচেষ্টা "
+                   "প্রয়োজন। মোট: {total} (সঠিক গণনায় সর্বদা 337)।"),
+    "yogas": ("Yogas", "योग", "যোগ"),
+    "en_detail_note": ("", "विस्तृत विवरण अभी अंग्रेज़ी में हैं; जल्द ही हिंदी में उपलब्ध होंगे।",
+                       "বিস্তারিত বিবরণ আপাতত ইংরেজিতে; শীঘ্রই বাংলায় আসবে।"),
+    "life_chapters": ("Life chapters", "जीवन के अध्याय", "জীবনের অধ্যায়"),
+    "now": ("now", "अभी", "এখন"),
+    "add_partner": ("Add your partner's chart first: tap **+ Add chart** and choose 'Spouse / Partner'. "
+                    "Then come back here.",
+                    "पहले अपने साथी की कुंडली जोड़ें: **+ कुंडली जोड़ें** दबाएँ और 'जीवनसाथी' चुनें। फिर यहाँ वापस आएँ।",
+                    "প্রথমে আপনার সঙ্গীর কুণ্ডলী যোগ করুন: **+ কুণ্ডলী যোগ** চাপুন এবং 'জীবনসঙ্গী' বেছে নিন। "
+                    "তারপর এখানে ফিরে আসুন।"),
+    "partner1": ("Groom / Partner 1", "वर / साथी 1", "বর / সঙ্গী 1"),
+    "partner2": ("Bride / Partner 2", "वधू / साथी 2", "কনে / সঙ্গী 2"),
+    "choose_two": ("Choose two different charts.", "दो अलग-अलग कुंडलियाँ चुनें।", "দুটি আলাদা কুণ্ডলী বেছে নিন।"),
+    "check_compat": ("Check compatibility", "मिलान देखें", "মিলন দেখুন"),
+    "guna_milan": ("Ashtakoot Guna Milan", "अष्टकूट गुण मिलान", "অষ্টকূট গুণ মিলন"),
+    "v_excellent": ("Excellent", "उत्तम", "অতি উত্তম"),
+    "v_vgood": ("Very good", "बहुत अच्छा", "খুব ভালো"),
+    "v_good": ("Good", "अच्छा", "ভালো"),
+    "v_effort": ("Needs understanding and effort", "समझ और प्रयास की आवश्यकता", "বোঝাপড়া ও প্রচেষ্টা প্রয়োজন"),
+    "match_note": ("18+ is traditionally considered suitable. A score is one view; the full charts and the two "
+                   "people matter more.",
+                   "परंपरागत रूप से 18+ उपयुक्त माना जाता है। अंक केवल एक दृष्टिकोण है; पूरी कुंडलियाँ और दोनों व्यक्ति "
+                   "अधिक मायने रखते हैं।",
+                   "ঐতিহ্যগতভাবে 18+ উপযুক্ত ধরা হয়। স্কোর একটি দিক মাত্র; সম্পূর্ণ কুণ্ডলী ও দুজন মানুষই বেশি গুরুত্বপূর্ণ।"),
+    "col_koota": ("Koota", "कूट", "কূট"),
+    "col_score": ("Score", "अंक", "স্কোর"),
+    "col_reflects": ("What it reflects", "क्या दर्शाता है", "কী নির্দেশ করে"),
+    "manglik_title": ("Mars placement (Manglik check)", "मंगल स्थिति (मांगलिक जाँच)", "মঙ্গলের অবস্থান (মাঙ্গলিক পরীক্ষা)"),
+    "from_lagna": ("from Lagna", "लग्न से", "লগ্ন থেকে"),
+    "from_moon": ("from Moon", "चंद्र से", "চন্দ্র থেকে"),
+    "yes": ("yes", "हाँ", "হ্যাঁ"),
+    "no": ("no", "नहीं", "না"),
+    "unknown_nt": ("unknown (no birth time)", "अज्ञात (जन्म समय नहीं)", "অজানা (জন্মসময় নেই)"),
+    "manglik_caption": ("Traditionally, if both partners have this Mars placement it balances out. It's one factor "
+                        "among many, not a verdict.",
+                        "परंपरा के अनुसार, यदि दोनों साथियों में मंगल की यह स्थिति हो तो यह संतुलित हो जाती है। यह कई "
+                        "कारकों में से एक है, कोई अंतिम निर्णय नहीं।",
+                        "ঐতিহ্য অনুযায়ী, দুজনেরই মঙ্গলের এই অবস্থান থাকলে তা ভারসাম্যে আসে। এটি অনেক বিষয়ের একটি, "
+                        "কোনো চূড়ান্ত রায় নয়।"),
+    "detailed_btn": ("Get detailed compatibility reading", "विस्तृत मिलान विश्लेषण पाएँ", "বিস্তারিত মিলন বিশ্লেষণ পান"),
+    "comparing": ("Dishara is comparing both charts...", "दिशारा दोनों कुंडलियों की तुलना कर रही है...",
+                  "দিশারা দুটি কুণ্ডলী তুলনা করছে..."),
+    "feedback": ("Help shape Dishara:", "दिशारा को बेहतर बनाने में मदद करें:", "দিশারাকে আরও ভালো করতে সাহায্য করুন:"),
+    "feedback_link": ("share your feedback", "अपनी राय दें", "আপনার মতামত দিন"),
+    "signed_in": ("Signed in as {email}", "{email} के रूप में साइन इन", "{email} হিসেবে সাইন ইন"),
+    "edit_chart": ("Edit this chart", "यह कुंडली बदलें", "এই কুণ্ডলী সম্পাদনা"),
+    "sign_out": ("Sign out", "साइन आउट", "সাইন আউট"),
+    "crisis_reply": (
+        "I'm really glad you told me, and I'm going to pause the astrology for now, because you matter more than "
+        "any chart.\n\nPlease talk to someone right now. **Tele-MANAS: 14416** (free, 24/7, in many Indian "
+        "languages). If you're in immediate danger, call **112**.\n\nIf you can, reach out to someone you trust "
+        "and let them know how you're feeling. I'm here whenever you want to talk again.",
+        "मुझे खुशी है कि आपने मुझे बताया। मैं अभी ज्योतिष को रोक रही हूँ, क्योंकि आप किसी भी कुंडली से ज़्यादा मायने "
+        "रखते हैं।\n\nकृपया अभी किसी से बात करें। **टेली-मानस: 14416** (निःशुल्क, 24x7, कई भारतीय भाषाओं में)। "
+        "अगर आप तुरंत खतरे में हैं, तो **112** पर कॉल करें।\n\nहो सके तो किसी भरोसेमंद व्यक्ति से संपर्क करें और उन्हें "
+        "बताएँ कि आप कैसा महसूस कर रहे हैं। जब भी आप फिर से बात करना चाहें, मैं यहाँ हूँ।",
+        "আপনি আমাকে জানিয়েছেন বলে আমি সত্যিই খুশি। আমি এখন জ্যোতিষ থামিয়ে রাখছি, কারণ যেকোনো কুণ্ডলীর চেয়ে আপনি "
+        "অনেক বেশি গুরুত্বপূর্ণ।\n\nঅনুগ্রহ করে এখনই কারও সঙ্গে কথা বলুন। **টেলি-মানস: 14416** (বিনামূল্যে, 24x7, "
+        "অনেক ভারতীয় ভাষায়)। আপনি যদি তাৎক্ষণিক বিপদে থাকেন, **112**-এ ফোন করুন।\n\nসম্ভব হলে কোনো বিশ্বস্ত "
+        "মানুষের সঙ্গে যোগাযোগ করুন এবং তাঁকে জানান আপনি কেমন বোধ করছেন। আবার কথা বলতে চাইলে আমি এখানেই আছি।"),
+    "resting": ("I'm resting for a moment. Please ask again in a minute.",
+                "मैं थोड़ा विश्राम कर रही हूँ। कृपया एक मिनट बाद फिर पूछें।",
+                "আমি একটু বিশ্রাম নিচ্ছি। অনুগ্রহ করে এক মিনিট পরে আবার জিজ্ঞাসা করুন।"),
+}
+
+def t(key, **kw):
+    s = pick(T[key])
+    return s.format(**kw) if kw else s
+
+SIGNS_HI = ["मेष", "वृषभ", "मिथुन", "कर्क", "सिंह", "कन्या", "तुला", "वृश्चिक", "धनु", "मकर", "कुंभ", "मीन"]
+SIGNS_BN = ["মেষ", "বৃষ", "মিথুন", "কর্কট", "সিংহ", "কন্যা", "তুলা", "বৃশ্চিক", "ধনু", "মকর", "কুম্ভ", "মীন"]
+NAK_HI = ["अश्विनी", "भरणी", "कृत्तिका", "रोहिणी", "मृगशिरा", "आर्द्रा", "पुनर्वसु", "पुष्य", "आश्लेषा", "मघा",
+          "पूर्वा फाल्गुनी", "उत्तरा फाल्गुनी", "हस्त", "चित्रा", "स्वाति", "विशाखा", "अनुराधा", "ज्येष्ठा", "मूल",
+          "पूर्वाषाढ़ा", "उत्तराषाढ़ा", "श्रवण", "धनिष्ठा", "शतभिषा", "पूर्वा भाद्रपद", "उत्तरा भाद्रपद", "रेवती"]
+NAK_BN = ["অশ্বিনী", "ভরণী", "কৃত্তিকা", "রোহিণী", "মৃগশিরা", "আর্দ্রা", "পুনর্বসু", "পুষ্যা", "অশ্লেষা", "মঘা",
+          "পূর্বফাল্গুনী", "উত্তরফাল্গুনী", "হস্তা", "চিত্রা", "স্বাতী", "বিশাখা", "অনুরাধা", "জ্যেষ্ঠা", "মূলা",
+          "পূর্বাষাঢ়া", "উত্তরাষাঢ়া", "শ্রবণা", "ধনিষ্ঠা", "শতভিষা", "পূর্বভাদ্রপদ", "উত্তরভাদ্রপদ", "রেবতী"]
+PLANET_T = {"Sun": ("Sun", "सूर्य", "সূর্য"), "Moon": ("Moon", "चंद्र", "চন্দ্র"), "Mars": ("Mars", "मंगल", "মঙ্গল"),
+            "Mercury": ("Mercury", "बुध", "বুধ"), "Jupiter": ("Jupiter", "गुरु", "বৃহস্পতি"),
+            "Venus": ("Venus", "शुक्र", "শুক্র"), "Saturn": ("Saturn", "शनि", "শনি"),
+            "Rahu": ("Rahu", "राहु", "রাহু"), "Ketu": ("Ketu", "केतु", "কেতু")}
+ABBR_T = {"Sun": ("Su", "सू", "র"), "Moon": ("Mo", "चं", "চ"), "Mars": ("Ma", "मं", "ম"),
+          "Mercury": ("Me", "बु", "বু"), "Jupiter": ("Ju", "गु", "বৃ"), "Venus": ("Ve", "शु", "শু"),
+          "Saturn": ("Sa", "श", "শ"), "Rahu": ("Ra", "रा", "রা"), "Ketu": ("Ke", "के", "কে")}
+ASC_T = ("Asc", "ल", "ল")
+TARA_T = {"Janma": ("Janma", "जन्म", "জন্ম"), "Sampat": ("Sampat", "संपत", "সম্পৎ"),
+          "Vipat": ("Vipat", "विपत", "বিপৎ"), "Kshema": ("Kshema", "क्षेम", "ক্ষেম"),
+          "Pratyak": ("Pratyak", "प्रत्यक", "প্রত্যক"), "Sadhana": ("Sadhana", "साधना", "সাধনা"),
+          "Naidhana": ("Naidhana", "नैधन", "নৈধন"), "Mitra": ("Mitra", "मित्र", "মিত্র"),
+          "Parama Mitra": ("Parama Mitra", "परम मित्र", "পরম মিত্র")}
+ROLE_T = {"Lagna lord": ("Lagna lord", "लग्नेश", "লগ্নেশ"),
+          "Yogakaraka": ("Yogakaraka", "योगकारक", "যোগকারক"),
+          "Functional benefic": ("Functional benefic", "कार्यात्मक शुभ ग्रह", "কার্যকরী শুভ গ্রহ"),
+          "Neutral": ("Neutral", "तटस्थ", "নিরপেক্ষ"),
+          "Functional malefic": ("Functional malefic", "कार्यात्मक पाप ग्रह", "কার্যকরী পাপ গ্রহ"),
+          "Acts through its sign lord": ("Acts through its sign lord", "राशि स्वामी के अनुसार फल",
+                                         "রাশিপতির মাধ্যমে ফল")}
+NOTE_T = {"exalted": ("exalted", "उच्च", "উচ্চ"), "own sign": ("own sign", "स्वराशि", "স্বক্ষেত্র"),
+          "debilitated": ("debilitated", "नीच", "নীচ"),
+          "debilitation cancelled": ("debilitation cancelled", "नीचभंग", "নীচভঙ্গ"),
+          "combust": ("combust", "अस्त", "অস্ত"), "vargottama": ("vargottama", "वर्गोत्तम", "বর্গোত্তম"),
+          "retrograde": ("retrograde", "वक्री", "বক্রী")}
+RELATION_T = {"Self": ("Self", "स्वयं", "নিজে"), "Spouse / Partner": ("Spouse / Partner", "जीवनसाथी", "জীবনসঙ্গী"),
+              "Mother": ("Mother", "माँ", "মা"), "Father": ("Father", "पिता", "বাবা"),
+              "Son": ("Son", "बेटा", "ছেলে"), "Daughter": ("Daughter", "बेटी", "মেয়ে"),
+              "Sibling": ("Sibling", "भाई-बहन", "ভাইবোন"), "Friend": ("Friend", "मित्र", "বন্ধু"),
+              "Other": ("Other", "अन्य", "অন্যান্য")}
+KOOTA_T = {"Varna": ("Varna", "वर्ण", "বর্ণ"), "Vashya": ("Vashya", "वश्य", "বশ্য"),
+           "Tara": ("Tara", "तारा", "তারা"), "Yoni": ("Yoni", "योनि", "যোনি"),
+           "Graha Maitri": ("Graha Maitri", "ग्रह मैत्री", "গ্রহমৈত্রী"), "Gana": ("Gana", "गण", "গণ"),
+           "Bhakoot": ("Bhakoot", "भकूट", "ভকূট"), "Nadi": ("Nadi", "नाड़ी", "নাড়ী")}
+AREA_T = {"career": ("Career & work", "करियर और काम", "কর্মজীবন ও কাজ"),
+          "money": ("Money & wealth", "धन और संपत्ति", "অর্থ ও সম্পদ"),
+          "marriage": ("Marriage & relationships", "विवाह और रिश्ते", "বিবাহ ও সম্পর্ক"),
+          "education": ("Education & learning", "शिक्षा", "শিক্ষা"),
+          "property": ("Home & property", "घर और संपत्ति", "বাড়ি ও সম্পত্তি"),
+          "children": ("Children", "संतान", "সন্তান"),
+          "travel": ("Travel & abroad", "यात्रा और विदेश", "ভ্রমণ ও বিদেশ"),
+          "health": ("Health & wellbeing habits", "स्वास्थ्य की आदतें", "স্বাস্থ্যকর অভ্যাস"),
+          "spiritual": ("Inner growth", "आंतरिक विकास", "অন্তরের বিকাশ")}
+VERDICT_T = {"Strongly supported": ("Strongly supported", "प्रबल रूप से समर्थित", "দৃঢ়ভাবে সমর্থিত"),
+             "Supported": ("Supported", "समर्थित", "সমর্থিত"),
+             "Balanced": ("Balanced", "संतुलित", "ভারসাম্যপূর্ণ"),
+             "Needs steady effort": ("Needs steady effort", "निरंतर प्रयास चाहिए", "নিয়মিত প্রচেষ্টা প্রয়োজন"),
+             "Asks for patience and long-term effort": ("Asks for patience and long-term effort",
+                                                        "धैर्य और दीर्घकालिक प्रयास चाहिए",
+                                                        "ধৈর্য ও দীর্ঘমেয়াদি প্রচেষ্টা প্রয়োজন")}
+VARGA_LIST = [
+    (1, ("D1 · Rashi (overall life)", "D1 · राशि (समग्र जीवन)", "D1 · রাশি (সমগ্র জীবন)")),
+    (2, ("D2 · Hora (wealth)", "D2 · होरा (धन)", "D2 · হোরা (সম্পদ)")),
+    (3, ("D3 · Drekkana (siblings, courage)", "D3 · द्रेष्काण (भाई-बहन, साहस)", "D3 · দ্রেক্কাণ (ভাইবোন, সাহস)")),
+    (4, ("D4 · Chaturthamsa (home, property)", "D4 · चतुर्थांश (घर, संपत्ति)", "D4 · চতুর্থাংশ (বাড়ি, সম্পত্তি)")),
+    (7, ("D7 · Saptamsa (children)", "D7 · सप्तांश (संतान)", "D7 · সপ্তাংশ (সন্তান)")),
+    (9, ("D9 · Navamsa (marriage, inner strength)", "D9 · नवांश (विवाह, आंतरिक शक्ति)",
+         "D9 · নবাংশ (বিবাহ, অন্তরের শক্তি)")),
+    (10, ("D10 · Dasamsa (career)", "D10 · दशांश (करियर)", "D10 · দশাংশ (কর্মজীবন)")),
+    (12, ("D12 · Dwadasamsa (parents)", "D12 · द्वादशांश (माता-पिता)", "D12 · দ্বাদশাংশ (পিতামাতা)")),
+    (24, ("D24 · Chaturvimsamsa (education)", "D24 · चतुर्विंशांश (शिक्षा)", "D24 · চতুর্বিংশাংশ (শিক্ষা)")),
+]
+CHAPTER_THEME_T = {
+    "Sun": ("confidence and leadership", "आत्मविश्वास और नेतृत्व", "আত্মবিশ্বাস ও নেতৃত্ব"),
+    "Moon": ("emotions and nurturing", "भावनाएँ और पोषण", "আবেগ ও যত্ন"),
+    "Mars": ("courage and action", "साहस और कर्म", "সাহস ও কর্ম"),
+    "Mercury": ("learning and communication", "सीखना और संवाद", "শেখা ও যোগাযোগ"),
+    "Jupiter": ("growth and wisdom", "विकास और ज्ञान", "বৃদ্ধি ও জ্ঞান"),
+    "Venus": ("love, comfort and creativity", "प्रेम, सुख और रचनात्मकता", "প্রেম, স্বাচ্ছন্দ্য ও সৃজনশীলতা"),
+    "Saturn": ("discipline and lasting results", "अनुशासन और स्थायी परिणाम", "শৃঙ্খলা ও স্থায়ী ফল"),
+    "Rahu": ("ambition and new territory", "महत्वाकांक्षा और नई राहें", "উচ্চাকাঙ্ক্ষা ও নতুন পথ"),
+    "Ketu": ("reflection and inner clarity", "चिंतन और आंतरिक स्पष्टता", "চিন্তন ও অন্তরের স্বচ্ছতা")}
+MOON_HOUSE_T = {
+    1: ("A fresh-start feeling. Put yourself first today.", "नई शुरुआत का एहसास। आज खुद को प्राथमिकता दें।",
+        "নতুন শুরুর অনুভূতি। আজ নিজেকে অগ্রাধিকার দিন।"),
+    2: ("Good for family time and money planning.", "परिवार के साथ समय और धन की योजना के लिए अच्छा।",
+        "পরিবারের সঙ্গে সময় ও অর্থ পরিকল্পনার জন্য ভালো।"),
+    3: ("Courage is high. Make that call or start something small.",
+        "साहस ऊँचा है। वह फ़ोन कर लें या कुछ छोटा शुरू करें।", "সাহস বেশি। সেই ফোনটা করে ফেলুন বা ছোট কিছু শুরু করুন।"),
+    4: ("A day for home, comfort and recharging.", "घर, आराम और ऊर्जा फिर से भरने का दिन।",
+        "বাড়ি, আরাম ও নতুন করে শক্তি সঞ্চয়ের দিন।"),
+    5: ("Creative and playful. Learn, create, enjoy.", "रचनात्मक और खुशमिज़ाज। सीखें, रचें, आनंद लें।",
+        "সৃজনশীল ও আনন্দময়। শিখুন, সৃষ্টি করুন, উপভোগ করুন।"),
+    6: ("Great for clearing pending tasks and health routines.", "अधूरे काम और सेहत की दिनचर्या निपटाने के लिए बढ़िया।",
+        "জমে থাকা কাজ ও স্বাস্থ্যের রুটিন সারার জন্য চমৎকার।"),
+    7: ("Partnerships shine. Meetings and relationships flow.", "साझेदारी चमकती है। बैठकें और रिश्ते सहज चलते हैं।",
+        "অংশীদারিত্ব উজ্জ্বল। বৈঠক ও সম্পর্ক সহজে এগোয়।"),
+    8: ("Go inward. Research, reflect and rest more.", "भीतर झाँकें। शोध करें, विचार करें और ज़्यादा आराम करें।",
+        "অন্তর্মুখী হোন। গবেষণা করুন, ভাবুন ও বেশি বিশ্রাম নিন।"),
+    9: ("Luck and wisdom. Learn, plan and seek guidance.", "भाग्य और ज्ञान। सीखें, योजना बनाएँ और मार्गदर्शन लें।",
+        "ভাগ্য ও জ্ঞান। শিখুন, পরিকল্পনা করুন ও পরামর্শ নিন।"),
+    10: ("Career spotlight. Show your work.", "करियर पर रोशनी। अपना काम दिखाएँ।", "কর্মজীবনে আলো। আপনার কাজ তুলে ধরুন।"),
+    11: ("Gains and friendships. Network and ask for support.", "लाभ और मित्रता। संपर्क बढ़ाएँ और सहयोग माँगें।",
+         "লাভ ও বন্ধুত্ব। যোগাযোগ বাড়ান ও সহায়তা চান।"),
+    12: ("Slow down. Rest, let go and plan quietly.", "गति धीमी करें। आराम करें, छोड़ दें और शांति से योजना बनाएँ।",
+         "গতি কমান। বিশ্রাম নিন, ছেড়ে দিন ও শান্তভাবে পরিকল্পনা করুন।")}
+SCORE_BANDS = [(85, 100, "Strong day"), (70, 84, "Steady day"), (55, 69, "Gentle day"), (45, 54, "Quiet, reflective day")]
+BAND_T = {
+    "Strong day": (("Strong day", "Good for important starts, key meetings and decisions."),
+                   ("मज़बूत दिन", "महत्वपूर्ण शुरुआत, ज़रूरी बैठकों और फ़ैसलों के लिए अच्छा।"),
+                   ("শক্তিশালী দিন", "গুরুত্বপূর্ণ শুরু, জরুরি বৈঠক ও সিদ্ধান্তের জন্য ভালো।")),
+    "Steady day": (("Steady day", "Good for regular work, follow-ups and steady progress."),
+                   ("स्थिर दिन", "नियमित काम, फ़ॉलो-अप और लगातार प्रगति के लिए अच्छा।"),
+                   ("স্থির দিন", "নিয়মিত কাজ, ফলো-আপ ও ধারাবাহিক অগ্রগতির জন্য ভালো।")),
+    "Gentle day": (("Gentle day", "Keep plans simple. Finish things rather than start new ones."),
+                   ("सौम्य दिन", "योजनाएँ सरल रखें। नया शुरू करने की बजाय काम पूरे करें।"),
+                   ("কোমল দিন", "পরিকল্পনা সহজ রাখুন। নতুন শুরুর চেয়ে কাজ শেষ করায় মন দিন।")),
+    "Quiet, reflective day": (("Quiet, reflective day", "Rest, plan and reflect. Avoid rushing big decisions."),
+                              ("शांत, चिंतनशील दिन", "आराम करें, योजना बनाएँ और विचार करें। बड़े फ़ैसलों में जल्दबाज़ी न करें।"),
+                              ("শান্ত, চিন্তনের দিন", "বিশ্রাম নিন, পরিকল্পনা করুন ও ভাবুন। বড় সিদ্ধান্তে তাড়াহুড়ো করবেন না।")),
+}
+BN_ORD = {1: "ম", 2: "য়", 3: "য়", 4: "র্থ", 5: "ম", 6: "ষ্ঠ", 7: "ম", 8: "ম", 9: "ম", 10: "ম", 11: "শ", 12: "শ"}
+
+def ord_l(n):
+    if L() == "hi":
+        return "पहले" if n == 1 else f"{n}वें"
+    if L() == "bn":
+        return f"{n}{BN_ORD.get(n, 'তম')}"
+    return ordinal(n)
+
+def sign_name(i):
+    return pick((SIGNS[i], SIGNS_HI[i], SIGNS_BN[i]))
+
+def short_sign(i):
+    return pick((SHORT[i], SIGNS_HI[i], SIGNS_BN[i]))
+
+def nak_name(i):
+    return pick((NAKSHATRAS[i], NAK_HI[i], NAK_BN[i]))
+
+def planet_name(p):
+    return pick(PLANET_T[p])
 
 # ---------------- STYLE ----------------
 st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Poppins:wght@300;400;500&display=swap');
-html, body, p, label, li, .stMarkdown {font-family:'Poppins',sans-serif;}
-h1, h2, h3, h4 {font-family:'Cormorant Garamond',serif !important; color:#FAC775 !important;}
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Poppins:wght@300;400;500&family=Noto+Sans+Devanagari:wght@400;500&family=Noto+Sans+Bengali:wght@400;500&family=Noto+Serif+Devanagari:wght@500;600&family=Noto+Serif+Bengali:wght@500;600&display=swap');
+html, body, p, label, li, .stMarkdown {font-family:'Poppins','Noto Sans Devanagari','Noto Sans Bengali',sans-serif;}
+h1, h2, h3, h4 {font-family:'Cormorant Garamond','Noto Serif Devanagari','Noto Serif Bengali',serif !important; color:#FAC775 !important;}
 .card {background:#3C3489; border-radius:16px; padding:16px 18px; margin-bottom:12px;}
 .muted {color:#AFA9EC; font-size:13px; margin:0;}
 .gold {color:#FAC775;}
@@ -40,22 +434,35 @@ SMALL_SUFFIX = "font-size:15px;color:#AFA9EC"
 def secret(name):
     return os.environ.get(name) or st.secrets[name]
 
+@st.cache_resource
 def db():
-    if "sb" not in st.session_state:
-        st.session_state.sb = create_client(secret("SUPABASE_URL"), secret("SUPABASE_KEY"))
-    return st.session_state.sb
+    return create_client(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_KEY"))
+
+def get_or_create_user(email, name, lang):
+    email = email.strip().lower()
+    rows = db().table("app_users").select("id,language").eq("email", email).limit(1).execute().data
+    if rows:
+        return rows[0]["id"], (rows[0].get("language") or "en")
+    new = db().table("app_users").insert({"email": email, "name": name, "language": lang}).execute().data[0]
+    return new["id"], lang
+
+def save_user_lang(uid, code):
+    try:
+        db().table("app_users").update({"language": code}).eq("id", uid).execute()
+    except Exception:
+        pass
 
 def list_charts(uid):
     return (db().table("profiles").select("*").eq("user_id", uid)
             .order("created_at").execute().data)
 
-def list_conversations(pid):
-    return (db().table("conversations").select("id,title,created_at").eq("profile_id", pid)
-            .order("created_at", desc=True).limit(40).execute().data)
+def list_conversations(uid, pid):
+    return (db().table("conversations").select("id,title,created_at").eq("user_id", uid)
+            .eq("profile_id", pid).order("created_at", desc=True).limit(40).execute().data)
 
-def load_conversation(cid):
-    return (db().table("messages").select("role,content").eq("conversation_id", cid)
-            .order("created_at").execute().data)
+def load_conversation(uid, cid):
+    return (db().table("messages").select("role,content").eq("user_id", uid)
+            .eq("conversation_id", cid).order("created_at").execute().data)
 
 def new_conversation(uid, pid, title):
     return (db().table("conversations").insert(
@@ -68,18 +475,19 @@ def save_message(uid, cid, role, content):
     except Exception:
         pass
 
-def get_saved_tip(pid, day):
+def get_saved_tip(uid, pid, day, lang):
     try:
-        rows = (db().table("daily_tips").select("content").eq("profile_id", pid)
-                .eq("day", day.isoformat()).limit(1).execute().data)
+        rows = (db().table("daily_tips").select("content").eq("user_id", uid).eq("profile_id", pid)
+                .eq("day", day.isoformat()).eq("lang", lang).limit(1).execute().data)
         return rows[0]["content"] if rows else None
     except Exception:
         return None
 
-def save_tip(uid, pid, day, content):
+def save_tip(uid, pid, day, lang, content):
     try:
         db().table("daily_tips").upsert({"user_id": uid, "profile_id": pid, "day": day.isoformat(),
-                                         "content": content}, on_conflict="profile_id,day").execute()
+                                         "lang": lang, "content": content},
+                                        on_conflict="profile_id,day,lang").execute()
     except Exception:
         pass
 
@@ -101,48 +509,79 @@ DASHA_ORDER = [("Ketu", 7), ("Venus", 20), ("Sun", 6), ("Moon", 10), ("Mars", 7)
 PLANETS = {"Sun": swe.SUN, "Moon": swe.MOON, "Mars": swe.MARS, "Mercury": swe.MERCURY,
            "Jupiter": swe.JUPITER, "Venus": swe.VENUS, "Saturn": swe.SATURN,
            "Rahu": swe.MEAN_NODE}
-ABBR = {"Sun": "Su", "Moon": "Mo", "Mars": "Ma", "Mercury": "Me", "Jupiter": "Ju",
-        "Venus": "Ve", "Saturn": "Sa", "Rahu": "Ra", "Ketu": "Ke"}
+SEVEN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+NATURAL_BENEFICS = {"Jupiter", "Venus", "Mercury", "Moon"}
 EXALT = {"Sun": 0, "Moon": 1, "Mars": 9, "Mercury": 5, "Jupiter": 3, "Venus": 11, "Saturn": 6}
 OWN = {"Sun": [4], "Moon": [3], "Mars": [0, 7], "Mercury": [2, 5],
        "Jupiter": [8, 11], "Venus": [1, 6], "Saturn": [9, 10]}
 SPECIAL_ASPECTS = {"Mars": [4, 8], "Jupiter": [5, 9], "Saturn": [3, 10]}
+COMBUST_ORBS = {"Moon": 12, "Mars": 17, "Mercury": 14, "Jupiter": 11, "Venus": 10, "Saturn": 15}
 HOUSE_TOPICS = {1: "self, body, direction", 2: "money, family, speech",
                 3: "courage, siblings, skills, short travel", 4: "home, mother, property, peace",
                 5: "education, creativity, children, romance", 6: "work routine, competition, health habits",
                 7: "marriage, partnerships, clients", 8: "transformation, research, shared resources",
                 9: "luck, higher learning, mentors, long travel", 10: "career, status, public work",
                 11: "gains, income, friends, ambitions", 12: "rest, expenses, foreign lands, spirituality"}
-VARGAS = {"D1 · Rashi (overall life)": 1, "D2 · Hora (wealth)": 2,
-          "D3 · Drekkana (siblings, courage)": 3, "D4 · Chaturthamsa (home, property)": 4,
-          "D7 · Saptamsa (children)": 7, "D9 · Navamsa (marriage, inner strength)": 9,
-          "D10 · Dasamsa (career)": 10, "D12 · Dwadasamsa (parents)": 12,
-          "D24 · Chaturvimsamsa (education)": 24}
 VARGA_NS = [2, 3, 4, 7, 9, 10, 12, 24]
-CHAPTER_THEME = {"Sun": "confidence and leadership", "Moon": "emotions and nurturing",
-                 "Mars": "courage and action", "Mercury": "learning and communication",
-                 "Jupiter": "growth and wisdom", "Venus": "love, comfort and creativity",
-                 "Saturn": "discipline and lasting results", "Rahu": "ambition and new territory",
-                 "Ketu": "reflection and inner clarity"}
-MOON_HOUSE_MEANING = {
-    1: "A fresh-start feeling. Put yourself first today.",
-    2: "Good for family time and money planning.",
-    3: "Courage is high. Make that call or start something small.",
-    4: "A day for home, comfort and recharging.",
-    5: "Creative and playful. Learn, create, enjoy.",
-    6: "Great for clearing pending tasks and health routines.",
-    7: "Partnerships shine. Meetings and relationships flow.",
-    8: "Go inward. Research, reflect and rest more.",
-    9: "Luck and wisdom. Learn, plan and seek guidance.",
-    10: "Career spotlight. Show your work.",
-    11: "Gains and friendships. Network and ask for support.",
-    12: "Slow down. Rest, let go and plan quietly."}
+BAV_RULES = {
+    "Sun": {"Sun": [1, 2, 4, 7, 8, 9, 10, 11], "Moon": [3, 6, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11],
+            "Mercury": [3, 5, 6, 9, 10, 11, 12], "Jupiter": [5, 6, 9, 11], "Venus": [6, 7, 12],
+            "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Lagna": [3, 4, 6, 10, 11, 12]},
+    "Moon": {"Sun": [3, 6, 7, 8, 10, 11], "Moon": [1, 3, 6, 7, 10, 11], "Mars": [2, 3, 5, 6, 9, 10, 11],
+             "Mercury": [1, 3, 4, 5, 7, 8, 10, 11], "Jupiter": [1, 4, 7, 8, 10, 11, 12],
+             "Venus": [3, 4, 5, 7, 9, 10, 11], "Saturn": [3, 5, 6, 11], "Lagna": [3, 6, 10, 11]},
+    "Mars": {"Sun": [3, 5, 6, 10, 11], "Moon": [3, 6, 11], "Mars": [1, 2, 4, 7, 8, 10, 11],
+             "Mercury": [3, 5, 6, 11], "Jupiter": [6, 10, 11, 12], "Venus": [6, 8, 11, 12],
+             "Saturn": [1, 4, 7, 8, 9, 10, 11], "Lagna": [1, 3, 6, 10, 11]},
+    "Mercury": {"Sun": [5, 6, 9, 11, 12], "Moon": [2, 4, 6, 8, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11],
+                "Mercury": [1, 3, 5, 6, 9, 10, 11, 12], "Jupiter": [6, 8, 11, 12],
+                "Venus": [1, 2, 3, 4, 5, 8, 9, 11], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11],
+                "Lagna": [1, 2, 4, 6, 8, 10, 11]},
+    "Jupiter": {"Sun": [1, 2, 3, 4, 7, 8, 9, 10, 11], "Moon": [2, 5, 7, 9, 11], "Mars": [1, 2, 4, 7, 8, 10, 11],
+                "Mercury": [1, 2, 4, 5, 6, 9, 10, 11], "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11],
+                "Venus": [2, 5, 6, 9, 10, 11], "Saturn": [3, 5, 6, 12], "Lagna": [1, 2, 4, 5, 6, 7, 9, 10, 11]},
+    "Venus": {"Sun": [8, 11, 12], "Moon": [1, 2, 3, 4, 5, 8, 9, 11, 12], "Mars": [3, 5, 6, 9, 11, 12],
+              "Mercury": [3, 5, 6, 9, 11], "Jupiter": [5, 8, 9, 10, 11], "Venus": [1, 2, 3, 4, 5, 8, 9, 10, 11],
+              "Saturn": [3, 4, 5, 8, 9, 10, 11], "Lagna": [1, 2, 3, 4, 5, 8, 9, 11]},
+    "Saturn": {"Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11], "Mars": [3, 5, 6, 10, 11, 12],
+               "Mercury": [6, 8, 9, 10, 11, 12], "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12],
+               "Saturn": [3, 5, 6, 11], "Lagna": [1, 3, 4, 6, 10, 11]},
+}
+AREAS = {
+    "career": {"label": "Career & work", "houses": [10, 6, 2, 11], "karakas": ["Saturn", "Sun", "Mercury"], "varga": 10},
+    "money": {"label": "Money & wealth", "houses": [2, 11, 5, 9], "karakas": ["Jupiter", "Venus"], "varga": 2},
+    "marriage": {"label": "Marriage & relationships", "houses": [7, 2, 11], "karakas": ["Venus", "Jupiter"], "varga": 9},
+    "education": {"label": "Education & learning", "houses": [4, 5, 9], "karakas": ["Mercury", "Jupiter"], "varga": 24},
+    "property": {"label": "Home & property", "houses": [4], "karakas": ["Mars", "Venus"], "varga": 4},
+    "children": {"label": "Children", "houses": [5], "karakas": ["Jupiter"], "varga": 7},
+    "travel": {"label": "Travel & abroad", "houses": [12, 9, 3], "karakas": ["Rahu"], "varga": None},
+    "health": {"label": "Health & wellbeing habits", "houses": [1, 6], "karakas": ["Sun", "Moon"], "varga": None},
+    "spiritual": {"label": "Inner growth", "houses": [9, 12], "karakas": ["Ketu", "Jupiter"], "varga": None},
+}
+AREA_KEYWORDS = {
+    "career": ["career", "job", "work", "promotion", "business", "office", "boss", "interview", "startup",
+               "naukri", "kaam", "नौकरी", "करियर", "व्यवसाय", "काम", "चाकरी", "চাকরি", "কর্মজীবন",
+               "কাজ", "ব্যবসা", "পদোন্নতি", "অফিস"],
+    "money": ["money", "wealth", "finance", "income", "salary", "saving", "invest", "loan", "debt", "paisa",
+              "dhan", "पैसा", "धन", "आय", "वेतन", "टাকা", "টাকা", "অর্থ", "আয়", "বেতন", "সম্পদ", "ঋণ"],
+    "marriage": ["marriage", "marry", "wedding", "spouse", "husband", "wife", "partner", "relationship",
+                 "love", "girlfriend", "boyfriend", "shaadi", "shadi", "vivah", "biye", "शादी", "विवाह",
+                 "प्रेम", "पति", "पत्नी", "रिश्ता", "বিয়ে", "বিবাহ", "স্বামী", "স্ত্রী", "প্রেম", "সম্পর্ক"],
+    "education": ["study", "studies", "exam", "education", "college", "degree", "course", "university",
+                  "padhai", "पढ़ाई", "परीक्षा", "शिक्षा", "পড়াশোনা", "পরীক্ষা", "শিক্ষা", "কলেজ"],
+    "property": ["house", "home", "property", "flat", "land", "vehicle", "ghar", "घर", "मकान", "संपत्ति",
+                 "জমি", "বাড়ি", "সম্পত্তি", "ফ্ল্যাট"],
+    "children": ["child", "children", "baby", "son", "daughter", "pregnan", "santan", "संतान", "बच्च",
+                 "সন্তান", "বাচ্চা"],
+    "travel": ["abroad", "foreign", "travel", "visa", "relocat", "settle", "overseas", "videsh", "bidesh",
+               "विदेश", "यात्रा", "বিদেশ", "ভ্রমণ", "ভিসা"],
+    "health": ["health", "fitness", "energy", "stress", "sleep", "sehat", "स्वास्थ्य", "सेहत",
+               "স্বাস্থ্য", "শরীর"],
+    "spiritual": ["spiritual", "meditation", "peace", "purpose", "अध्यात्म", "शांति", "ध्यान",
+                  "আধ্যাত্মিক", "শান্তি", "ধ্যান"],
+}
 TARAS = ["Janma", "Sampat", "Vipat", "Kshema", "Pratyak", "Sadhana", "Naidhana", "Mitra", "Parama Mitra"]
 GOOD_TARAS = {"Sampat", "Kshema", "Sadhana", "Mitra", "Parama Mitra"}
-SCORE_BANDS = [(85, 100, "Strong day", "Good for important starts, key meetings and decisions."),
-               (70, 84, "Steady day", "Good for regular work, follow-ups and steady progress."),
-               (55, 69, "Gentle day", "Keep plans simple. Finish things rather than start new ones."),
-               (45, 54, "Quiet, reflective day", "Rest, plan and reflect. Avoid rushing big decisions.")]
 NAK_LEN = 360 / 27
 swe.set_sid_mode(swe.SIDM_LAHIRI)
 FLAGS = swe.FLG_MOSEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
@@ -171,6 +610,17 @@ def dignity(name, sign):
         return "own sign"
     return ""
 
+def is_combust(name, lon, sun_lon, retro):
+    if name not in COMBUST_ORBS:
+        return False
+    orb = COMBUST_ORBS[name]
+    if retro and name == "Mercury":
+        orb = 12
+    if retro and name == "Venus":
+        orb = 8
+    d = abs(lon - sun_lon) % 360
+    return min(d, 360 - d) <= orb
+
 def varga_sign(lon, n):
     s, deg = int(lon // 30), lon % 30
     odd = s % 2 == 0
@@ -197,6 +647,30 @@ def varga_sign(lon, n):
         p = int(deg // 1.25)
         return (4 + p) % 12 if odd else (3 + p) % 12
     return s
+
+def functional_roles(asc_sign):
+    roles = {}
+    for planet in SEVEN:
+        owned = [h for h in range(1, 13) if SIGN_LORDS[(asc_sign + h - 1) % 12] == planet]
+        if 1 in owned:
+            roles[planet] = "Lagna lord"
+            continue
+        if any(h in (4, 7, 10) for h in owned) and any(h in (5, 9) for h in owned):
+            roles[planet] = "Yogakaraka"
+            continue
+        score = 0
+        for h in owned:
+            if h in (5, 9):
+                score += 3
+            elif h in (3, 6, 8, 11):
+                score -= 2
+            elif h in (4, 7, 10) and planet in ("Jupiter", "Venus"):
+                score -= 1
+        roles[planet] = ("Functional benefic" if score > 0 else
+                         "Functional malefic" if score < 0 else "Neutral")
+    roles["Rahu"] = "Acts through its sign lord"
+    roles["Ketu"] = "Acts through its sign lord"
+    return roles
 
 def vimshottari(moon_lon, birth_utc):
     nak = int(moon_lon // NAK_LEN)
@@ -246,6 +720,21 @@ def upcoming_subperiods(chart, now, count=8):
                 out.append(ad)
     return out
 
+def ashtakavarga(chart):
+    if chart["time_unknown"]:
+        return None
+    ref_signs = {r: chart["planets"][r]["sign"] for r in SEVEN}
+    ref_signs["Lagna"] = chart["asc_sign"]
+    bav = {}
+    for pl, refs in BAV_RULES.items():
+        row = [0] * 12
+        for ref, houses in refs.items():
+            for h in houses:
+                row[(ref_signs[ref] + h - 1) % 12] += 1
+        bav[pl] = row
+    sav = [sum(bav[p][s] for p in bav) for s in range(12)]
+    return {"bav": bav, "sav": sav}
+
 def compute_chart(local_dt, lat, lng, time_unknown=False):
     utc = local_dt - timedelta(hours=IST)
     jd = julian_day(utc)
@@ -260,6 +749,7 @@ def compute_chart(local_dt, lat, lng, time_unknown=False):
         _, ascmc = swe.houses_ex(jd, lat, lng, b'P', FLAGS)
         asc = ascmc[0]
     asc_sign = int(asc // 30)
+    sun_lon = planets["Sun"]["lon"]
     for name, p in planets.items():
         p["sign"] = int(p["lon"] // 30)
         p["deg"] = p["lon"] % 30
@@ -268,17 +758,62 @@ def compute_chart(local_dt, lat, lng, time_unknown=False):
         p["pada"] = int((p["lon"] % NAK_LEN) // (NAK_LEN / 4)) + 1
         p["dignity"] = dignity(name, p["sign"])
         p["vargas"] = {n: varga_sign(p["lon"], n) for n in VARGA_NS}
-    return {"asc": asc, "asc_sign": asc_sign, "time_unknown": time_unknown,
-            "planets": planets, "dashas": vimshottari(planets["Moon"]["lon"], utc)}
+        p["combust"] = is_combust(name, p["lon"], sun_lon, p["retro"])
+        p["vargottama"] = (not time_unknown) and p["sign"] == p["vargas"][9]
+    chart = {"asc": asc, "asc_sign": asc_sign, "time_unknown": time_unknown,
+             "planets": planets, "roles": functional_roles(asc_sign),
+             "dashas": vimshottari(planets["Moon"]["lon"], utc)}
+    chart["av"] = ashtakavarga(chart)
+    return chart
 
 def house_of(chart, sign):
     return (sign - chart["asc_sign"]) % 12 + 1
 
+def lord_of(chart, h):
+    return SIGN_LORDS[(chart["asc_sign"] + h - 1) % 12]
+
 def lordships(chart):
     out = {}
     for h in range(1, 13):
-        out.setdefault(SIGN_LORDS[(chart["asc_sign"] + h - 1) % 12], []).append(h)
+        out.setdefault(lord_of(chart, h), []).append(h)
     return out
+
+def neecha_bhanga(chart):
+    P, out = chart["planets"], set()
+    moon_sign = P["Moon"]["sign"]
+    for name, p in P.items():
+        if p["dignity"] != "debilitated":
+            continue
+        deb = p["sign"]
+        helpers = [SIGN_LORDS[deb]] + [pl for pl, ex in EXALT.items() if ex == deb]
+        for hp in helpers:
+            hs = P[hp]["sign"]
+            if (hs - chart["asc_sign"]) % 3 == 0 or (hs - moon_sign) % 3 == 0:
+                out.add(name)
+                break
+    return out
+
+def exchanges(chart):
+    P, out = chart["planets"], []
+    for i, a in enumerate(SEVEN):
+        for b in SEVEN[i + 1:]:
+            if SIGN_LORDS[P[a]["sign"]] == b and SIGN_LORDS[P[b]["sign"]] == a:
+                out.append((a, b))
+    return out
+
+def planet_notes(chart, name, nb):
+    p, notes = chart["planets"][name], []
+    if p["dignity"]:
+        notes.append(p["dignity"])
+    if name in nb:
+        notes.append("debilitation cancelled")
+    if p["combust"]:
+        notes.append("combust")
+    if p["vargottama"]:
+        notes.append("vargottama")
+    if p["retro"]:
+        notes.append("retrograde")
+    return notes
 
 def aspects_on(chart):
     asp = {h: [] for h in range(1, 13)}
@@ -289,76 +824,306 @@ def aspects_on(chart):
             asp[(p["house"] + n - 2) % 12 + 1].append(name)
     return asp
 
-def house_lines(chart):
+def house_lines(chart, nb):
     asp = aspects_on(chart)
     lines = []
     for h in range(1, 13):
         sign = (chart["asc_sign"] + h - 1) % 12
         lord = SIGN_LORDS[sign]
         lp = chart["planets"][lord]
+        notes = planet_notes(chart, lord, nb)
+        nt = f" ({', '.join(notes)})" if notes else ""
         occ = [n for n, p in chart["planets"].items() if p["house"] == h]
-        dig = f" ({lp['dignity']})" if lp["dignity"] else ""
-        lines.append(f"House {h} [{HOUSE_TOPICS[h]}]: {SIGNS[sign]}; lord {lord} in house "
-                     f"{lp['house']}{dig}; occupants: {', '.join(occ) or 'none'}; "
-                     f"aspected by: {', '.join(asp[h]) or 'none'}")
+        lines.append(f"House {h} [{HOUSE_TOPICS[h]}]: {SIGNS[sign]}; lord {lord} "
+                     f"[{chart['roles'][lord]}] in house {lp['house']}{nt}; "
+                     f"occupants: {', '.join(occ) or 'none'}; aspected by: {', '.join(asp[h]) or 'none'}")
     return lines
 
 def find_yogas(chart):
     P, ys = chart["planets"], []
-    if (P["Jupiter"]["house"] - P["Moon"]["house"]) % 3 == 0:
+    known = not chart["time_unknown"]
+    moon_s = P["Moon"]["sign"]
+    five = ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
+    if (P["Jupiter"]["sign"] - moon_s) % 3 == 0:
         ys.append("Gaja Kesari (Jupiter in a kendra from the Moon): wisdom, respect, protection")
     if P["Sun"]["sign"] == P["Mercury"]["sign"]:
         ys.append("Budhaditya (Sun with Mercury): sharp intellect, communication")
     if P["Moon"]["sign"] == P["Mars"]["sign"]:
         ys.append("Chandra-Mangala (Moon with Mars): drive to earn, enterprise")
-    if not chart["time_unknown"]:
+    second = [n for n in five if (P[n]["sign"] - moon_s) % 12 == 1]
+    twelfth = [n for n in five if (P[n]["sign"] - moon_s) % 12 == 11]
+    if second and twelfth:
+        ys.append(f"Durudhara yoga ({', '.join(second + twelfth)} on both sides of the Moon): "
+                  f"resources, support and a well-rounded life")
+    elif second:
+        ys.append(f"Sunapha yoga ({', '.join(second)} in the 2nd from the Moon): self-earned wealth and ability")
+    elif twelfth:
+        ys.append(f"Anapha yoga ({', '.join(twelfth)} in the 12th from the Moon): good character, ease and comfort")
+    else:
+        near = [n for n in five if (P[n]["sign"] - moon_s) % 3 == 0]
+        if not near:
+            ys.append("Kemadruma yoga (no planets around the Moon): independence; building a personal "
+                      "support system brings stability")
+    adhi = [n for n in ("Mercury", "Jupiter", "Venus") if (P[n]["sign"] - moon_s) % 12 in (5, 6, 7)]
+    if len(adhi) >= 2:
+        ys.append(f"Adhi yoga ({', '.join(adhi)} in the 6th to 8th from the Moon): leadership, comfort, steady progress")
+    amala = [n for n in ("Mercury", "Jupiter", "Venus")
+             if (known and P[n]["house"] == 10) or (P[n]["sign"] - moon_s) % 12 == 9]
+    if amala:
+        ys.append(f"Amala yoga ({', '.join(amala)} in the 10th): good reputation through ethical work")
+    for name in sorted(neecha_bhanga(chart)):
+        ys.append(f"Neecha Bhanga Raja yoga ({name}'s debilitation is cancelled): an early weakness "
+                  f"that turns into real strength through effort")
+    for a, b in exchanges(chart):
+        ha, hb = P[a]["house"], P[b]["house"]
+        hs = {ha, hb}
+        if hs & {6, 8, 12}:
+            kind, meaning = "Dainya", "early struggles in these areas turn into resilience"
+        elif 3 in hs:
+            kind, meaning = "Khala", "gains through effort, courage and initiative"
+        else:
+            kind, meaning = "Maha", "strong mutual support between these life areas"
+        ys.append(f"{kind} Parivartana yoga ({a} and {b} exchange signs, houses {ha} and {hb}): {meaning}")
+    if known:
         for pl, yn in {"Mars": "Ruchaka", "Mercury": "Bhadra", "Jupiter": "Hamsa",
                        "Venus": "Malavya", "Saturn": "Sasa"}.items():
             p = P[pl]
             if p["house"] in (1, 4, 7, 10) and p["dignity"] in ("exalted", "own sign"):
                 ys.append(f"{yn} Mahapurusha yoga ({pl} {p['dignity']} in a kendra)")
-        kendra = {SIGN_LORDS[(chart["asc_sign"] + h - 1) % 12] for h in (1, 4, 7, 10)}
-        trikona = {SIGN_LORDS[(chart["asc_sign"] + h - 1) % 12] for h in (1, 5, 9)}
+        kendra = {lord_of(chart, h) for h in (1, 4, 7, 10)}
+        trikona = {lord_of(chart, h) for h in (1, 5, 9)}
         pairs = set()
         for a in kendra:
             for b in trikona:
                 if a != b and P[a]["sign"] == P[b]["sign"] and frozenset((a, b)) not in pairs:
                     pairs.add(frozenset((a, b)))
                     ys.append(f"Raja yoga ({a} and {b}, kendra and trikona lords, together): rise and recognition")
+        for h, yn in {6: "Harsha", 8: "Sarala", 12: "Vimala"}.items():
+            lord = lord_of(chart, h)
+            if P[lord]["house"] in (6, 8, 12):
+                ys.append(f"{yn} Viparita Raja yoga ({ordinal(h)} lord {lord} in house {P[lord]['house']}): "
+                          f"success that comes after, or through, challenges")
+        wealth = {lord_of(chart, 2), lord_of(chart, 11)}
+        fortune = {lord_of(chart, 1), lord_of(chart, 5), lord_of(chart, 9)}
+        dpairs = set()
+        for a in wealth:
+            for b in fortune:
+                if a != b and P[a]["sign"] == P[b]["sign"] and frozenset((a, b)) not in dpairs:
+                    dpairs.add(frozenset((a, b)))
+                    ys.append(f"Dhana yoga ({a} and {b}, wealth and fortune lords, together): capacity to build wealth")
     return ys
 
 def transits(chart, now):
     jd = julian_day(now)
     moon_sign = chart["planets"]["Moon"]["sign"]
+    av = chart.get("av")
     out = []
     for name in ("Saturn", "Jupiter", "Rahu"):
         lon, _ = sidereal_lon(jd, PLANETS[name])
         s = int(lon // 30)
+        pts = f"; its Ashtakavarga points there: {av['bav'][name][s]}/8" if av and name in av["bav"] else ""
         out.append(f"{name} now in {SIGNS[s]}: house {house_of(chart, s)} from Lagna, "
-                   f"house {(s - moon_sign) % 12 + 1} from Moon")
+                   f"house {(s - moon_sign) % 12 + 1} from Moon{pts}")
     sat_from_moon = (int(sidereal_lon(jd, swe.SATURN)[0] // 30) - moon_sign) % 12 + 1
     phase = {12: "phase 1 (rising)", 1: "phase 2 (peak)", 2: "phase 3 (setting)"}.get(sat_from_moon)
     out.append(f"Sade Sati: {'active, ' + phase if phase else 'not active'}")
     return out
 
-def daily_indicators(chart, now):
-    moon_now, _ = sidereal_lon(julian_day(now), swe.MOON)
+def transit_months(chart, now, months=24):
+    key = f"{now:%Y-%m}"
+    store = chart.setdefault("_tr", {})
+    if key not in store:
+        out = []
+        for i in range(months):
+            mm = (now.month - 1 + i) % 12 + 1
+            yy = now.year + (now.month - 1 + i) // 12
+            d = datetime(yy, mm, 15)
+            jd = julian_day(d)
+            js = int(sidereal_lon(jd, swe.JUPITER)[0] // 30)
+            ss = int(sidereal_lon(jd, swe.SATURN)[0] // 30)
+            out.append((d, js, ss))
+        store[key] = out
+    return store[key]
+
+def influences(planet, from_sign, target_sign):
+    d = (target_sign - from_sign) % 12 + 1
+    return d in {"Jupiter": (1, 5, 7, 9), "Saturn": (1, 3, 7, 10)}[planet]
+
+def double_transit_windows(chart, now, house):
+    target = (chart["asc_sign"] + house - 1) % 12
+    windows, cur = [], None
+    for d, js, ss in transit_months(chart, now):
+        on = influences("Jupiter", js, target) and influences("Saturn", ss, target)
+        if on and cur is None:
+            cur = [d, d]
+        elif on:
+            cur[1] = d
+        elif cur:
+            windows.append(tuple(cur))
+            cur = None
+    if cur:
+        windows.append(tuple(cur))
+    return windows
+
+def fmt_windows(windows):
+    return "; ".join(f"{a:%b %Y}" if a == b else f"{a:%b %Y} to {b:%b %Y}" for a, b in windows)
+
+def house_strength(chart, h, nb, av, asp):
+    P, roles, factors = chart["planets"], chart["roles"], []
+    sign = (chart["asc_sign"] + h - 1) % 12
+    lord = SIGN_LORDS[sign]
+    lp = P[lord]
+    if lp["house"] in (1, 4, 5, 7, 9, 10):
+        factors.append((1, f"{ordinal(h)} lord {lord} sits in a strong house (the {ordinal(lp['house'])})"))
+    elif lp["house"] in (6, 8, 12):
+        if h in (6, 8, 12):
+            factors.append((1, f"{ordinal(h)} lord {lord} in the {ordinal(lp['house'])} house "
+                               f"(Viparita: difficulties cancel out)"))
+        else:
+            factors.append((-1, f"{ordinal(h)} lord {lord} sits in the {ordinal(lp['house'])} house, "
+                                f"a house of effort"))
+    d = lp["dignity"]
+    if d == "exalted":
+        factors.append((2, f"{ordinal(h)} lord {lord} is exalted"))
+    elif d == "own sign":
+        factors.append((1, f"{ordinal(h)} lord {lord} is in its own sign"))
+    elif d == "debilitated":
+        if lord in nb:
+            factors.append((1, f"{ordinal(h)} lord {lord}'s debilitation is cancelled: strength through effort"))
+        else:
+            factors.append((-2, f"{ordinal(h)} lord {lord} is debilitated: needs patient, deliberate effort"))
+    if lp["combust"]:
+        factors.append((-1, f"{ordinal(h)} lord {lord} is combust (close to the Sun)"))
+    if lp["vargottama"]:
+        factors.append((1, f"{ordinal(h)} lord {lord} is vargottama (consistent strength)"))
+    if roles.get(lord) == "Yogakaraka":
+        factors.append((1, f"{ordinal(h)} lord {lord} is the Yogakaraka for this Lagna"))
+    occ = [n for n, p in P.items() if p["house"] == h]
+    for n in sorted(set(occ + asp[h])):
+        how = "in" if n in occ else "aspecting"
+        if n in NATURAL_BENEFICS or roles.get(n) in ("Yogakaraka", "Lagna lord"):
+            factors.append((1, f"{n} {how} the {ordinal(h)} house brings support"))
+        elif n in ("Saturn", "Mars", "Rahu", "Ketu", "Sun"):
+            factors.append((-1, f"{n} {how} the {ordinal(h)} house asks for discipline"))
+    if av:
+        s = av["sav"][sign]
+        if s >= 28:
+            factors.append((1, f"Ashtakavarga gives the {ordinal(h)} house {s} points (strong, 28+)"))
+        elif s <= 24:
+            factors.append((-1, f"Ashtakavarga gives the {ordinal(h)} house {s} points (below 25: build steadily)"))
+    return factors
+
+def area_analysis(chart, key, now):
+    A, P = AREAS[key], chart["planets"]
+    nb, av, asp = neecha_bhanga(chart), chart.get("av"), aspects_on(chart)
+    factors = []
+    for i, h in enumerate(A["houses"]):
+        w = 1 if i == 0 else 0.5
+        factors += [(v * w, t_) for v, t_ in house_strength(chart, h, nb, av, asp)]
+    for k in A["karakas"]:
+        p = P[k]
+        if p["dignity"] in ("exalted", "own sign"):
+            factors.append((1, f"{k}, the natural significator, is {p['dignity']}"))
+        elif p["dignity"] == "debilitated" and k not in nb:
+            factors.append((-1, f"{k}, the natural significator, is debilitated"))
+        if p.get("combust"):
+            factors.append((-0.5, f"{k}, the natural significator, is combust"))
+    if A["varga"] and not chart["time_unknown"]:
+        n = A["varga"]
+        h1 = A["houses"][0]
+        lord1 = lord_of(chart, h1)
+        vh = (P[lord1]["vargas"][n] - varga_sign(chart["asc"], n)) % 12 + 1
+        if vh in (1, 4, 5, 7, 9, 10):
+            factors.append((0.5, f"In the D{n} chart, the {ordinal(h1)} lord {lord1} is well placed (house {vh})"))
+        elif vh in (6, 8, 12):
+            factors.append((-0.5, f"In the D{n} chart, the {ordinal(h1)} lord {lord1} is in house {vh}, asking for effort"))
+    net = sum(v for v, _ in factors)
+    if net >= 4:
+        verdict = "Strongly supported"
+    elif net >= 1.5:
+        verdict = "Supported"
+    elif net > -1.5:
+        verdict = "Balanced"
+    elif net > -4:
+        verdict = "Needs steady effort"
+    else:
+        verdict = "Asks for patience and long-term effort"
+    supportive = [t_ for v, t_ in sorted(factors, key=lambda f: -f[0]) if v > 0][:4]
+    challenging = [t_ for v, t_ in sorted(factors, key=lambda f: f[0]) if v < 0][:3]
+    houses_set = set(A["houses"])
+
+    def link(pl):
+        why = []
+        if pl not in ("Rahu", "Ketu"):
+            owned = [h for h in A["houses"] if lord_of(chart, h) == pl]
+            if owned:
+                why.append(f"rules house {', '.join(map(str, owned))}")
+        if P[pl]["house"] in houses_set:
+            why.append(f"sits in house {P[pl]['house']}")
+        asp_h = [h for h in A["houses"] if pl in asp[h]]
+        if asp_h:
+            why.append(f"aspects house {', '.join(map(str, asp_h))}")
+        if pl in A["karakas"]:
+            why.append("is a natural significator")
+        return why
+
+    periods = []
+    for ad in upcoming_subperiods(chart, now, 8):
+        why = link(ad["lord"])
+        current = ad["start"] <= now < ad["end"]
+        if why or current:
+            periods.append(f"{ad['md']}-{ad['lord']} ({ad['start']:%b %Y} to {ad['end']:%b %Y})"
+                           f"{' [CURRENT]' if current else ''}: {ad['lord']} [{chart['roles'][ad['lord']]}] "
+                           + ("; ".join(why) if why else "is not directly linked to this area"))
+    windows = double_transit_windows(chart, now, A["houses"][0])
+    return {"key": key, "label": A["label"], "house": A["houses"][0], "net": net, "verdict": verdict,
+            "supportive": supportive, "challenging": challenging, "periods": periods, "windows": windows}
+
+def area_block(an):
+    lines = [f"AREA: {an['label']} | Outlook: {an['verdict']} (engine score {an['net']:+.1f})",
+             "Supportive factors: " + ("; ".join(an["supportive"]) or "none notable"),
+             "Factors needing effort: " + ("; ".join(an["challenging"]) or "none notable"),
+             "Relevant dasha periods: " + (" | ".join(an["periods"]) or "none in the next few periods"),
+             f"Double transit (Jupiter + Saturn) on house {an['house']}: "
+             + (fmt_windows(an["windows"]) or "none in the next 24 months")]
+    return "\n".join(lines)
+
+def detect_areas(q):
+    ql = q.lower()
+    return [k for k, words in AREA_KEYWORDS.items() if any(w in ql for w in words)]
+
+def areas_summary(chart, now):
+    out = []
+    for key in AREAS:
+        an = area_analysis(chart, key, now)
+        top = an["supportive"][0] if an["supportive"] else "no single standout factor"
+        out.append(f"{an['label']}: {an['verdict']}; top strength: {top}")
+    return "\n".join(out)
+
+def daily_indicators(chart, ref_time):
+    moon_now, _ = sidereal_lon(julian_day(ref_time), swe.MOON)
     nak_now = int(moon_now // NAK_LEN)
     tara = TARAS[(nak_now - chart["planets"]["Moon"]["nak"]) % 9]
     msign = int(moon_now // 30)
     chandra = (msign - chart["planets"]["Moon"]["sign"]) % 12 + 1
     good_t, good_c = tara in GOOD_TARAS, chandra in (1, 3, 6, 7, 10, 11)
     house = house_of(chart, msign)
-    score = (45 + (20 if good_t else 10 if tara == "Janma" else 0)
-             + (20 if good_c else 0)
-             + (15 if house in (1, 2, 3, 5, 9, 10, 11) else 0))
+    av = chart.get("av")
+    if av:
+        bindus = av["bav"]["Moon"][msign]
+        third = round(bindus * 15 / 8)
+    else:
+        bindus = None
+        third = 15 if house in (1, 2, 3, 5, 9, 10, 11) else 0
+    score = 45 + (20 if good_t else 10 if tara == "Janma" else 0) + (20 if good_c else 0) + third
     label = next(b[2] for b in SCORE_BANDS if b[0] <= score <= b[1])
     return {"tara": tara, "good_tara": good_t, "chandra": chandra, "good_chandra": good_c,
-            "house": house, "moon_nak": NAKSHATRAS[nak_now], "moon_sign": SIGNS[msign],
-            "score": score, "label": label}
+            "house": house, "nak_idx": nak_now, "moon_sign": SIGNS[msign],
+            "bindus": bindus, "score": score, "label": label}
 
 def chart_text(chart, now):
     P = chart["planets"]
+    nb = neecha_bhanga(chart)
     lines = []
     if chart["time_unknown"]:
         lines.append("NOTE: Birth time unknown. Houses are counted from the Moon sign (Chandra Lagna). "
@@ -366,32 +1131,42 @@ def chart_text(chart, now):
         lines.append(f"Chandra Lagna: {SIGNS[chart['asc_sign']]}")
     else:
         vl = "; ".join(f"D{n} {SHORT[varga_sign(chart['asc'], n)]}" for n in VARGA_NS)
-        lines.append(f"Lagna: {SIGNS[chart['asc_sign']]} {chart['asc'] % 30:.1f}°. "
-                     f"Divisional Lagnas: {vl}")
+        lines.append(f"Lagna: {SIGNS[chart['asc_sign']]} {chart['asc'] % 30:.1f}°. Divisional Lagnas: {vl}")
+    roles = chart["roles"]
+    groups = {}
+    for pl in SEVEN:
+        groups.setdefault(roles[pl], []).append(pl)
+    lines.append("\nFUNCTIONAL NATURE FOR THIS LAGNA: " +
+                 "; ".join(f"{k}: {', '.join(v)}" for k, v in groups.items()))
     rules = lordships(chart)
     lines.append("\nPLANETS:")
     for name, p in P.items():
-        extra = [x for x in (p["dignity"], "retrograde" if p["retro"] else "") if x]
-        ext = f" ({', '.join(extra)})" if extra else ""
+        notes = planet_notes(chart, name, nb)
+        ext = f" ({', '.join(notes)})" if notes else ""
         ruled = f", rules houses {', '.join(map(str, rules[name]))}" if name in rules else ""
         vg = ""
         if not chart["time_unknown"]:
             vg = "; " + ", ".join(f"D{n} {SHORT[p['vargas'][n]]}" for n in VARGA_NS)
-        lines.append(f"{name}: {SIGNS[p['sign']]} {p['deg']:.1f}°, house {p['house']}{ext}{ruled}; "
-                     f"{NAKSHATRAS[p['nak']]} pada {p['pada']}{vg}")
+        lines.append(f"{name} [{roles[name]}]: {SIGNS[p['sign']]} {p['deg']:.1f}°, house {p['house']}"
+                     f"{ext}{ruled}; {NAKSHATRAS[p['nak']]} pada {p['pada']}{vg}")
     lines.append("\nHOUSES:")
-    lines += house_lines(chart)
+    lines += house_lines(chart, nb)
+    av = chart.get("av")
+    if av:
+        lines.append("\nASHTAKAVARGA (SAV points by house; 28+ strong, below 25 needs effort): " +
+                     ", ".join(f"H{h} {av['sav'][(chart['asc_sign'] + h - 1) % 12]}" for h in range(1, 13)))
     ys = find_yogas(chart)
     lines.append("\nYOGAS: " + ("; ".join(ys) if ys else "none of the common ones"))
     lines.append("\nMAHADASHAS:")
     for d in chart["dashas"]:
         tag = " (CURRENT)" if d["start"] <= now < d["end"] else ""
-        lines.append(f"{d['lord']}: {d['start']:%b %Y} to {d['end']:%b %Y}{tag}")
+        lines.append(f"{d['lord']} [{roles[d['lord']]}]: {d['start']:%b %Y} to {d['end']:%b %Y}{tag}")
     subs = upcoming_subperiods(chart, now)
     lines.append("\nANTARDASHAS (current and upcoming):")
     for ad in subs:
         tag = " (CURRENT)" if ad["start"] <= now < ad["end"] else ""
-        lines.append(f"{ad['md']}-{ad['lord']}: {ad['start']:%b %Y} to {ad['end']:%b %Y}{tag}")
+        lines.append(f"{ad['md']}-{ad['lord']} [{roles[ad['lord']]}]: "
+                     f"{ad['start']:%b %Y} to {ad['end']:%b %Y}{tag}")
     cur_ad = subs[0]
     lines.append(f"\nPRATYANTARS within {cur_ad['md']}-{cur_ad['lord']}:")
     shown = 0
@@ -415,9 +1190,9 @@ def kundali_svg(chart, n=1):
     houses = {h: [] for h in range(1, 13)}
     for name, p in chart["planets"].items():
         s = p["sign"] if n == 1 else p["vargas"][n]
-        houses[(s - asc_v) % 12 + 1].append(ABBR[name])
+        houses[(s - asc_v) % 12 + 1].append(pick(ABBR_T[name]))
     if not chart["time_unknown"]:
-        houses[1].insert(0, "Asc")
+        houses[1].insert(0, pick(ASC_T))
     parts = ['<div style="text-align:center"><svg viewBox="0 0 300 300" width="100%" style="max-width:380px">',
              '<rect x="2" y="2" width="296" height="296" rx="8" fill="#3C3489" stroke="#FAC775" stroke-width="1.5"/>',
              '<g stroke="#FAC775" stroke-width="1" fill="none"><line x1="2" y1="2" x2="298" y2="298"/>'
@@ -436,7 +1211,7 @@ def chart_from_profile(profile):
                          profile["time_unknown"])
 
 def get_chart(profile):
-    key = (f"{profile['id']}|{profile['birth_date']}|{profile['birth_time']}|"
+    key = (f"v{CHART_VERSION}|{profile['id']}|{profile['birth_date']}|{profile['birth_time']}|"
            f"{profile['time_unknown']}|{profile['lat']}|{profile['lon']}")
     cache = st.session_state.setdefault("chart_cache", {})
     if key not in cache:
@@ -493,8 +1268,8 @@ def ashtakoot(boy, girl):
     rows.append(("Varna", 1 if VARNA[bs] >= VARNA[gs] else 0, 1, "Values and work approach"))
     rows.append(("Vashya", VASHYA_TABLE[vashya_class(bs, bm["deg"])][vashya_class(gs, gm["deg"])], 2,
                  "Mutual attraction and influence"))
-    t = tara_ok(gn, bn) + tara_ok(bn, gn)
-    rows.append(("Tara", {2: 3, 1: 1.5, 0: 0}[t], 3, "Wellbeing and fortune together"))
+    tt = tara_ok(gn, bn) + tara_ok(bn, gn)
+    rows.append(("Tara", {2: 3, 1: 1.5, 0: 0}[tt], 3, "Wellbeing and fortune together"))
     rows.append(("Yoni", YONI_TABLE[NAK_YONI[bn]][NAK_YONI[gn]], 4,
                  f"Physical and intimate harmony ({ANIMALS[NAK_YONI[bn]]} and {ANIMALS[NAK_YONI[gn]]})"))
     l1, l2 = SIGN_LORDS[bs], SIGN_LORDS[gs]
@@ -521,8 +1296,13 @@ def manglik(chart):
     return from_lagna, from_moon
 
 def manglik_text(from_lagna, from_moon):
+    """English version, used inside the AI prompt."""
     lt = "unknown (no birth time)" if from_lagna is None else ("yes" if from_lagna else "no")
     return f"from Lagna: {lt}; from Moon: {'yes' if from_moon else 'no'}"
+
+def manglik_text_ui(from_lagna, from_moon):
+    lt = t("unknown_nt") if from_lagna is None else (t("yes") if from_lagna else t("no"))
+    return f"{t('from_lagna')}: {lt}; {t('from_moon')}: {t('yes') if from_moon else t('no')}"
 
 # ---------------- PLACE SEARCH ----------------
 @st.cache_data(show_spinner=False, ttl=86400)
@@ -555,56 +1335,63 @@ def search_places(q):
     return unique[:8]
 
 # ---------------- SAFETY & AI ----------------
-CRISIS_WORDS = ["suicide", "kill myself", "end my life", "want to die", "self harm",
-                "self-harm", "hurt myself", "no reason to live", "आत्महत्या",
-                "मरना चाहता", "मरना चाहती", "जीना नहीं चाहता", "जीना नहीं चाहती"]
-CRISIS_REPLY = ("I'm really glad you told me, and I'm going to pause the astrology for now, "
-                "because you matter more than any chart.\n\n"
-                "Please talk to someone right now. **Tele-MANAS: 14416** (free, 24/7, "
-                "in many Indian languages). If you're in immediate danger, call **112**.\n\n"
-                "If you can, reach out to someone you trust and let them know how you're feeling. "
-                "I'm here whenever you want to talk again.")
-RESTING = "I'm resting for a moment. Please ask again in a minute."
+CRISIS_WORDS = ["suicide", "kill myself", "end my life", "want to die", "self harm", "self-harm",
+                "hurt myself", "no reason to live",
+                # Hindi (Devanagari and romanised)
+                "आत्महत्या", "मरना चाहता", "मरना चाहती", "मर जाना चाहता", "मर जाना चाहती",
+                "जीना नहीं चाहता", "जीना नहीं चाहती", "खुद को खत्म", "खुद को नुकसान",
+                "marna chahta", "marna chahti", "jeena nahi chahta", "jeena nahi chahti", "khud ko khatam",
+                # Bengali (Bengali script and romanised)
+                "আত্মহত্যা", "মরে যেতে চাই", "বাঁচতে চাই না", "নিজেকে শেষ করে", "নিজের ক্ষতি",
+                "more jete chai", "bachte chai na"]
 
 def system_prompt(lang, chart_name, rel):
     who = ("The user is asking about their own chart." if rel == "Self" else
            f"This chart belongs to {chart_name}, the user's {rel.lower()}. "
            f"Speak about {chart_name} in the third person.")
-    return f"""You are Dishara (written दिशारा in Hindi), a warm, expert Vedic astrologer in the
-Parashari tradition. {who} Give specific, well-reasoned guidance that leaves people clear,
-capable and hopeful.
+    return f"""You are Dishara (written दिशारा in Hindi and দিশারা in Bengali), a warm, expert Vedic
+astrologer in the Parashari tradition. {who} Give specific, well-reasoned guidance that leaves people
+clear, capable and hopeful.
 
 HOW TO ANALYSE (every time, silently):
+0. If an AREA ANALYSIS is provided, it is the calculated judgement of Dishara's engine. Base your
+   conclusion on its outlook, explain its top supportive and effort factors in plain words, and use
+   its dasha periods and double-transit windows for timing. Do not contradict it; you may add nuance
+   from the chart. A double transit (Jupiter and Saturn both influencing a house) is a classical
+   timing indicator for that area. Ashtakavarga: 28+ points strong, below 25 needs steady effort.
 1. Identify the life area and its houses: career 10, 6, 2, 11 + D10; money 2, 11, 5, 9 + D2;
    marriage/relationships 7, 2, 11, Venus + D9; education 4, 5, 9, Mercury, Jupiter + D24;
    home/property 4 + D4; children 5, Jupiter + D7; siblings/courage 3 + D3; parents 4, 9 + D12;
    travel/abroad 3, 9, 12; health 1, 6 (wellbeing habits only); spiritual growth 9, 12, Ketu.
-2. For each relevant house: its sign, its lord, where that lord sits and its dignity,
-   planets in it, aspects on it, and the natural significator. D1 is primary; use the
-   divisional chart as supporting evidence.
-3. Check yogas that involve these houses or planets.
-4. Timing: does the current Mahadasha, Antardasha or Pratyantar lord own, occupy or aspect
-   the relevant houses? Combine with Saturn and Jupiter transits. Name periods with months.
+2. For each relevant house: its sign; its lord, where that lord sits, its dignity and its
+   functional nature for this Lagna; whether the lord is combust, vargottama or has cancelled
+   debilitation; planets in the house; aspects on it; and the natural significator.
+3. Check yogas and sign exchanges that involve these houses or planets.
+4. Timing: periods of the Yogakaraka, Lagna lord and functional benefics are more supportive;
+   periods of functional malefics bring results through effort and patience. Name periods with months.
 5. Weigh supportive and challenging factors and reach a clear conclusion.
 
 HOW TO ANSWER (default):
 - Bold headings: **What the chart shows** (2-4 bullets, each citing a specific factor),
-  **Timing** (specific periods), **What you can do** (2-3 practical actions).
+  **Timing** (specific periods), **What you can do** (2-3 practical actions). Translate the
+  headings into the reply language.
 - Be specific to THIS chart. No generic Lagna or sun-sign personality text unless asked.
 - Explain any Sanskrit term in a few words. Under 250 words.
 - If the request says DAILY TIPS or COMPATIBILITY, follow the format given in the request instead.
 
 RULES:
-1. Use ONLY the data provided. Never invent positions, yogas, scores or dates.
+1. Use ONLY the data provided. Never invent positions, yogas, roles, scores or dates.
 2. Lead with strengths; frame challenges as growth areas with practical steps.
-3. No fear: no curses, doshas as threats, gemstones or paid remedies.
+3. No fear: no curses, doshas as threats, gemstones or paid remedies. Never call a planet
+   or period "bad"; describe what it asks of the person.
 4. Never predict death, illness, accidents, divorce, lottery or stock results.
 5. If asked about death or lifespan, kindly say you don't predict that and turn to strengths.
    Only if the person sounds distressed or hopeless, keep astrology to a line or two, put
    support first, and suggest Tele-MANAS at 14416 (free, 24/7). Don't call it confidential.
 6. If the chart notes the birth time is unknown, say once that you're reading the Moon chart,
    and avoid Lagna-based, divisional-chart or exact-timing claims.
-7. Reply in {lang}. Write your own name correctly in that language's script."""
+7. Reply in {lang}, using natural everyday {lang} with common astrology terms in that language.
+   Write your own name correctly in that language's script."""
 
 @st.cache_resource
 def get_client():
@@ -619,34 +1406,46 @@ def get_models():
     order = {"gemini-flash-latest": 0, "gemini-flash-lite-latest": 1}
     return sorted(models, key=lambda m: order.get(m, 2))
 
-def ask_dishara(prompt, lang, chart_name, rel):
+def ask_dishara(prompt, chart_name, rel):
     client = get_client()
+    lang = ANSWER_LANG[L()]
     for model in get_models()[:6]:
         for attempt in range(2):
             try:
                 r = client.models.generate_content(
                     model=model, contents=prompt,
                     config=types.GenerateContentConfig(
-                        system_instruction=system_prompt(lang, chart_name, rel), temperature=0.5))
+                        system_instruction=system_prompt(lang, chart_name, rel), temperature=0.4))
                 return r.text
             except errors.ServerError:
                 time.sleep(2 * (attempt + 1))
             except errors.ClientError:
                 break
-    return RESTING
+    return None
 
 # ---------------- SCREENS ----------------
 def hero():
-    st.markdown("""<div style="text-align:center;padding:16px 0 4px">
+    st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
       <svg viewBox="0 0 200 120" width="200"><g stroke="#FAC775" stroke-width="2" stroke-linecap="round">
       <line x1="100" y1="8" x2="100" y2="26"/><line x1="40" y1="33" x2="53" y2="46"/><line x1="160" y1="33" x2="147" y2="46"/>
       <line x1="14" y1="90" x2="31" y2="90"/><line x1="186" y1="90" x2="169" y2="90"/></g>
       <path d="M45 98 A55 55 0 0 1 155 98 Z" fill="#EF9F27"/><path d="M68 98 A32 32 0 0 1 132 98 Z" fill="#FAC775"/>
       <line x1="10" y1="98" x2="190" y2="98" stroke="#7F77DD" stroke-width="1.5"/></svg>
       <h1 style="font-size:48px;margin:0">Dishara</h1>
-      <p class="gold" style="margin:0">दिशारा</p>
-      <p style="color:#CECBF6;font-size:15px">Your stars, your direction.<br>Every night ends in a sunrise.</p>
+      <p class="gold" style="margin:0">दिशारा · দিশারা</p>
+      <p style="color:#CECBF6;font-size:15px">{t("tagline")}</p>
     </div>""", unsafe_allow_html=True)
+
+def lang_picker(uid=None, key="lang_pick"):
+    codes = list(LANG_CODES)
+    cur = L()
+    choice = st.selectbox("Language · भाषा · ভাষা", codes, index=codes.index(cur),
+                          format_func=lambda c: LANG_CODES[c], key=key)
+    if choice != cur:
+        st.session_state.ui_lang = choice
+        if uid:
+            save_user_lang(uid, choice)
+        st.rerun()
 
 def reset_conversation():
     st.session_state.conv_id = None
@@ -655,113 +1454,82 @@ def reset_conversation():
 
 def auth_screen():
     hero()
-    signin, signup = st.tabs(["Sign in", "Create account"])
-    logged_in = None
-    with signin:
-        email = st.text_input("Email", key="si_email")
-        pw = st.text_input("Password", type="password", key="si_pw")
-        if st.button("Sign in"):
-            try:
-                res = db().auth.sign_in_with_password({"email": email.strip(), "password": pw})
-                logged_in = {"id": res.user.id, "email": res.user.email}
-            except Exception:
-                st.error("Couldn't sign in. Check your email and password.")
-    with signup:
-        email2 = st.text_input("Email", key="su_email")
-        pw2 = st.text_input("Password (at least 8 characters)", type="password", key="su_pw")
-        consent = st.checkbox("I agree that Dishara can store birth details and conversations "
-                              "to personalise guidance. I can ask for them to be deleted anytime.")
-        if st.button("Create account"):
-            if len(pw2) < 8:
-                st.error("Please use a password of at least 8 characters.")
-            elif not consent:
-                st.error("Please tick the consent box to continue.")
-            else:
-                try:
-                    res = db().auth.sign_up({"email": email2.strip(), "password": pw2})
-                    if res.session:
-                        logged_in = {"id": res.user.id, "email": res.user.email}
-                    else:
-                        st.success("Account created. Check your email to confirm, then sign in.")
-                except Exception as ex:
-                    st.error(f"Couldn't create the account: {ex}")
-    if logged_in:
-        st.session_state.user = logged_in
-        st.rerun()
+    lang_picker(key="lang_pick_auth")
+    st.markdown(f"<p class='muted' style='text-align:center'>{t('signin_intro')}</p>", unsafe_allow_html=True)
+    consent = st.checkbox(t("consent"))
+    if st.button(t("continue_google"), disabled=not consent):
+        st.login()
+    st.caption(t("google_hint"))
 
 def chart_form(uid, existing):
     hero()
     ex = existing or {}
     first_chart = not st.session_state.get("charts")
-    st.markdown("### " + ("Edit birth details" if ex else "Add a birth chart"))
-    name = st.text_input("Name", value=ex.get("name", ""))
+    st.markdown("### " + (t("edit_birth") if ex else t("add_chart_title")))
+    name = st.text_input(t("name"), value=ex.get("name", ""))
     rel_default = RELATIONS.index(ex["relation"]) if ex.get("relation") in RELATIONS else (0 if first_chart else 1)
-    rel = st.selectbox("Whose chart is this?", RELATIONS, index=rel_default)
-    bdate = st.date_input("Birth date", value=date.fromisoformat(ex["birth_date"]) if ex else None,
+    rel = st.selectbox(t("whose_chart"), RELATIONS, index=rel_default, format_func=lambda r: pick(RELATION_T[r]))
+    bdate = st.date_input(t("birth_date"), value=date.fromisoformat(ex["birth_date"]) if ex else None,
                           min_value=date(1900, 1, 1), max_value=date.today(), format="DD/MM/YYYY")
 
-    unknown = st.checkbox("I don't know the exact birth time", value=ex.get("time_unknown", False))
+    unknown = st.checkbox(t("unknown_time"), value=ex.get("time_unknown", False))
     hour = minute = ampm = None
     if not unknown:
         ih = im = iap = None
         if ex and not ex.get("time_unknown"):
-            t = datetime.strptime(ex["birth_time"][:5], "%H:%M")
-            ih, im, iap = (t.hour % 12 or 12) - 1, t.minute, 0 if t.hour < 12 else 1
-        st.markdown("<p class='muted'>Birth time (you can type to jump, e.g. 7 or 45)</p>",
-                    unsafe_allow_html=True)
+            tm = datetime.strptime(ex["birth_time"][:5], "%H:%M")
+            ih, im, iap = (tm.hour % 12 or 12) - 1, tm.minute, 0 if tm.hour < 12 else 1
+        st.markdown(f"<p class='muted'>{t('time_hint')}</p>", unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
-        hour = c1.selectbox("Hour", list(range(1, 13)), index=ih, placeholder="Hour")
-        minute = c2.selectbox("Minute", [f"{m:02d}" for m in range(60)], index=im, placeholder="Min")
-        ampm = c3.selectbox("AM / PM", ["AM", "PM"], index=iap, placeholder="AM/PM")
+        hour = c1.selectbox(t("hour"), list(range(1, 13)), index=ih, placeholder=t("hour"))
+        minute = c2.selectbox(t("minute"), [f"{m:02d}" for m in range(60)], index=im, placeholder=t("minute"))
+        ampm = c3.selectbox(t("ampm"), ["AM", "PM"], index=iap, placeholder=t("ampm"))
     else:
-        st.caption("No problem. Dishara will read the Moon chart, which is still very meaningful.")
+        st.caption(t("unknown_caption"))
 
     place = (ex["place"], ex["lat"], ex["lon"]) if ex else None
     if ex:
-        st.markdown(f"<p class='muted'>Current birth place: {html.escape(ex['place'])}</p>",
+        st.markdown(f"<p class='muted'>{t('current_place', place=html.escape(ex['place']))}</p>",
                     unsafe_allow_html=True)
-    query = st.text_input("Birth place: type the town or city and press Enter", placeholder="e.g. Mysuru")
+    query = st.text_input(t("place_label"), placeholder=t("place_ph"))
     if len(query.strip()) >= 3:
-        with st.spinner("Finding places..."):
+        with st.spinner(t("finding_places")):
             options = search_places(query.strip())
         if options:
             labels = [o[0] for o in options]
-            pick = st.selectbox("Select the birth place", labels, index=None,
-                                placeholder="Choose the correct place")
-            if pick:
-                place = options[labels.index(pick)]
+            pk = st.selectbox(t("select_place"), labels, index=None, placeholder=t("choose_place"))
+            if pk:
+                place = options[labels.index(pk)]
         else:
-            st.warning("No match found. Check the spelling, or try the nearest bigger town.")
+            st.warning(t("no_match"))
 
-    default_lang = LANGUAGES.index(ex["language"]) if ex.get("language") in LANGUAGES else 0
-    lang = st.selectbox("Language for answers", LANGUAGES, index=default_lang)
-
-    if st.button("Save chart"):
+    if st.button(t("save_chart")):
         problems = []
         if not name.strip():
-            problems.append("a name")
+            problems.append(t("p_name"))
         if not bdate:
-            problems.append("the birth date")
+            problems.append(t("p_date"))
         if not unknown and (hour is None or minute is None or ampm is None):
-            problems.append("hour, minute and AM/PM")
+            problems.append(t("p_time"))
         if not place:
-            problems.append("the birth place (pick one from the list)")
+            problems.append(t("p_place"))
         if problems:
-            st.error("Please add " + ", ".join(problems) + ".")
+            st.error(t("please_add", items=", ".join(problems)))
             return
         h24, mins = (12, 0) if unknown else (hour % 12 + (12 if ampm == "PM" else 0), int(minute))
         row = {"user_id": uid, "name": name.strip(), "relation": rel,
                "birth_date": bdate.isoformat(), "birth_time": f"{h24:02d}:{mins:02d}",
                "time_unknown": unknown, "place": place[0], "lat": place[1], "lon": place[2],
-               "language": lang}
+               "language": ANSWER_LANG[L()]}
         saved = None
         try:
             if ex:
-                saved = db().table("profiles").update(row).eq("id", ex["id"]).execute().data[0]
+                saved = (db().table("profiles").update(row).eq("id", ex["id"])
+                         .eq("user_id", uid).execute().data[0])
             else:
                 saved = db().table("profiles").insert(row).execute().data[0]
         except Exception as ex2:
-            st.error(f"Couldn't save the chart: {ex2}")
+            st.error(t("save_failed", err=ex2))
         if saved:
             st.session_state.charts = list_charts(uid)
             st.session_state.active_id = saved["id"]
@@ -770,14 +1538,14 @@ def chart_form(uid, existing):
             st.rerun()
 
     if not first_chart:
-        if st.button("Cancel"):
+        if st.button(t("cancel")):
             st.session_state.mode = None
             st.rerun()
     if ex:
         st.markdown("---")
-        confirm = st.checkbox(f"Yes, permanently delete {ex['name']}'s chart and its conversations")
-        if confirm and st.button("Delete this chart"):
-            db().table("profiles").delete().eq("id", ex["id"]).execute()
+        confirm = st.checkbox(t("delete_confirm", name=ex["name"]))
+        if confirm and st.button(t("delete_chart")):
+            db().table("profiles").delete().eq("id", ex["id"]).eq("user_id", uid).execute()
             st.session_state.charts = list_charts(uid)
             st.session_state.active_id = None
             st.session_state.mode = None
@@ -785,11 +1553,16 @@ def chart_form(uid, existing):
             st.rerun()
 
 # ---------------- APP FLOW ----------------
-if "user" not in st.session_state:
+if not st.user.is_logged_in:
     auth_screen()
     st.stop()
 
-uid = st.session_state.user["id"]
+if "uid" not in st.session_state:
+    uid0, saved_lang = get_or_create_user(st.user.email, st.user.get("name"), L())
+    st.session_state.uid = uid0
+    st.session_state.ui_lang = saved_lang if saved_lang in LANG_CODES else "en"
+uid = st.session_state.uid
+
 if "charts" not in st.session_state:
     st.session_state.charts = list_charts(uid)
     reset_conversation()
@@ -797,6 +1570,7 @@ charts = st.session_state.charts
 mode = st.session_state.get("mode")
 
 if not charts or mode == "new":
+    lang_picker(uid, key="lang_pick_form")
     chart_form(uid, None)
     st.stop()
 
@@ -811,136 +1585,135 @@ if mode == "edit":
 
 def chart_label(i):
     c = by_id[i]
-    return f"{c['name']} ({c['relation']})"
+    return f"{c['name']} ({pick(RELATION_T.get(c['relation'], (c['relation'],) * 3))})"
 
 me = next((c for c in charts if c["relation"] == "Self"), charts[0])
-st.markdown(f"<p class='muted'>Shubh din</p><h2 style='margin-top:0'>Namaste, "
-            f"{html.escape(me['name'])}</h2>", unsafe_allow_html=True)
+g1, g2 = st.columns([3, 1])
+g1.markdown(f"<p class='muted'>{t('shubh_din')}</p><h2 style='margin-top:0'>"
+            f"{t('namaste', name=html.escape(me['name']))}</h2>", unsafe_allow_html=True)
+with g2:
+    lang_picker(uid, key="lang_pick_main")
 
 ids = [c["id"] for c in charts]
 c1, c2 = st.columns([3, 1])
-picked = c1.selectbox("Viewing chart", ids, index=ids.index(st.session_state.active_id),
+picked = c1.selectbox(t("viewing_chart"), ids, index=ids.index(st.session_state.active_id),
                       format_func=chart_label)
 if picked != st.session_state.active_id:
     st.session_state.active_id = picked
     reset_conversation()
 c2.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
-if c2.button("+ Add chart"):
+if c2.button(t("add_chart_btn")):
     st.session_state.mode = "new"
     st.rerun()
 
 profile = by_id[st.session_state.active_id]
-pid, pname, prel, lang = profile["id"], profile["name"], profile["relation"], profile["language"]
+pid, pname, prel = profile["id"], profile["name"], profile["relation"]
 chart = get_chart(profile)
 now = datetime.now(timezone.utc).replace(tzinfo=None)
 today = (now + timedelta(hours=IST)).date()
+day_ref = datetime.combine(today, datetime.min.time()) + timedelta(hours=6 - IST)
 cur = next(d for d in chart["dashas"] if d["start"] <= now < d["end"])
 
-home, chat, kundali, match = st.tabs(["Home", "Ask Dishara", "Kundali", "Match"])
+home, chat, kundali, match = st.tabs([t("tab_home"), t("tab_ask"), t("tab_kundali"), t("tab_match")])
 
 # ----- HOME -----
 with home:
-    ind = daily_indicators(chart, now)
+    ind = daily_indicators(chart, day_ref)
     if ind["good_tara"]:
-        tara_word = "supportive"
+        tara_word = t("tw_support")
     elif ind["tara"] == "Janma":
-        tara_word = "a reflective day"
+        tara_word = t("tw_reflect")
     else:
-        tara_word = "a day to go gently"
-    chandra_word = "favourable" if ind["good_chandra"] else "asks for patience"
-    st.markdown(f"""<div class="card"><p class="muted">Today's energy · {today:%d %b %Y}</p>
-      <p style="{BIG_NUMBER}">{ind['score']}<span style="{SMALL_SUFFIX}"> / 100 · {ind['label']}</span></p>
-      <p class="big">{MOON_HOUSE_MEANING[ind['house']]}</p>
-      <p class="muted">Why: the Moon is in {ind['moon_nak']}, giving {html.escape(pname)} a
-      {ind['tara']} tara ({tara_word}). It's in the {ordinal(ind['chandra'])} sign from the natal
-      Moon ({chandra_word}) and the {ordinal(ind['house'])} house of the chart.</p></div>""",
-                unsafe_allow_html=True)
+        tara_word = t("tw_gentle")
+    chandra_word = t("cw_good") if ind["good_chandra"] else t("cw_patience")
+    av_line = t("av_line", b=ind["bindus"]) if ind["bindus"] is not None else ""
+    band_label, _ = pick(BAND_T[ind["label"]])
+    why = t("why_score", nak=nak_name(ind["nak_idx"]), name=html.escape(pname),
+            tara=pick(TARA_T[ind["tara"]]), tara_word=tara_word, ch=ord_l(ind["chandra"]),
+            ch_word=chandra_word, house=ord_l(ind["house"]))
+    st.markdown(f"""<div class="card"><p class="muted">{t('todays_energy', date=f'{today:%d %b %Y}')}</p>
+      <p style="{BIG_NUMBER}">{ind['score']}<span style="{SMALL_SUFFIX}"> / 100 · {band_label}</span></p>
+      <p class="big">{pick(MOON_HOUSE_T[ind['house']])}</p>
+      <p class="muted">{why}{av_line}</p></div>""", unsafe_allow_html=True)
 
-    with st.expander("What does this score mean?"):
-        for lo, hi, band_name, meaning in SCORE_BANDS:
+    with st.expander(t("score_expander")):
+        for lo, hi, band_key in SCORE_BANDS:
+            bl, bm = pick(BAND_T[band_key])
             if lo <= ind["score"] <= hi:
-                st.markdown(f"**→ {lo}–{hi} · {band_name} (today):** {meaning}")
+                st.markdown(f"**→ {lo}–{hi} · {bl} ({t('today_tag')}):** {bm}")
             else:
-                st.markdown(f"{lo}–{hi} · {band_name}: {meaning}")
-        st.markdown("**About this score**")
-        st.caption("Your daily score comes from three traditional Vedic checks of where the Moon "
-                   "is today compared with your birth chart: Tara Bala (today's nakshatra counted "
-                   "from your birth star), Chandra Bala (today's Moon sign counted from your birth "
-                   "Moon) and the house the Moon is moving through in your chart.")
-        st.caption("The Moon moves quickly. It changes nakshatra about once a day and sign every "
-                   "two to three days, so the score can shift during the day when it crosses into "
-                   "a new one. Think of it as a gentle guide to the day's mood, not a fixed "
-                   "prediction. There are no bad days, only days suited to different things.")
+                st.markdown(f"{lo}–{hi} · {bl}: {bm}")
+        st.markdown(f"**{t('about_score')}**")
+        st.caption(t("about1"))
+        st.caption(t("about2"))
 
     tips_cache = st.session_state.setdefault("tips", {})
-    tip_key = f"{pid}|{today}"
+    tip_key = f"{pid}|{today}|{L()}"
     if tip_key not in tips_cache:
-        saved_tip = get_saved_tip(pid, today)
+        saved_tip = get_saved_tip(uid, pid, today, L())
         if saved_tip:
             tips_cache[tip_key] = saved_tip
         else:
-            with st.spinner("Preparing today's personal tips..."):
-                ind_text = (f"Moon today in {ind['moon_sign']}, nakshatra {ind['moon_nak']}; "
+            with st.spinner(t("preparing_tips")):
+                ind_text = (f"Moon today in {ind['moon_sign']}, nakshatra {NAKSHATRAS[ind['nak_idx']]}; "
                             f"Tara: {ind['tara']} ({'good' if ind['good_tara'] else 'challenging'}); "
                             f"Moon is {ordinal(ind['chandra'])} from natal Moon "
                             f"({'favourable' if ind['good_chandra'] else 'less favourable'}); "
                             f"Moon transits house {ind['house']} from Lagna; "
-                            f"day score {ind['score']}/100 ({ind['label']}).")
+                            + (f"Moon's Ashtakavarga points today: {ind['bindus']}/8; "
+                               if ind["bindus"] is not None else "")
+                            + f"day score {ind['score']}/100 ({ind['label']}).")
                 tip = ask_dishara(
                     f"BIRTH CHART:\n{chart_text(chart, now)}\n\nTODAY'S INDICATORS:\n{ind_text}\n\n"
                     f"DAILY TIPS REQUEST for {today:%d %b %Y}: Start with one bold line naming today's "
-                    f"theme. Then exactly 3 bullets: **Work**, **Relationships**, **Wellbeing**, each "
-                    f"one practical action with a short reason from today's Moon, Tara or the current "
-                    f"dasha. Under 120 words.", lang, pname, prel)
-            if tip != RESTING:
-                save_tip(uid, pid, today, tip)
+                    f"theme. Then exactly 3 bullets: Work, Relationships, Wellbeing (translate these labels "
+                    f"and make them bold), each one practical action with a short reason from today's Moon, "
+                    f"Tara or the current dasha. Under 120 words.", pname, prel)
+            if tip:
+                save_tip(uid, pid, today, L(), tip)
                 tips_cache[tip_key] = tip
             else:
-                st.caption("Today's tips will appear shortly. Refresh in a minute.")
+                st.caption(t("tips_soon"))
     if tip_key in tips_cache:
-        st.markdown("<div class='card'><p class='muted'>Today's personal tips</p></div>",
-                    unsafe_allow_html=True)
+        st.markdown(f"<div class='card'><p class='muted'>{t('todays_tips')}</p></div>", unsafe_allow_html=True)
         st.markdown(tips_cache[tip_key])
 
     pct = int(100 * (now - cur["start"]) / (cur["end"] - cur["start"]))
-    st.markdown(f"""<div class="card"><p class="muted">Current chapter · until {cur['end']:%b %Y}</p>
-      <p class="big">{cur['lord']} Mahadasha: {CHAPTER_THEME[cur['lord']]}</p>
+    st.markdown(f"""<div class="card"><p class="muted">{t('current_chapter', date=f"{cur['end']:%b %Y}")}</p>
+      <p class="big">{t('mahadasha', lord=planet_name(cur['lord']), theme=pick(CHAPTER_THEME_T[cur['lord']]))}</p>
       <div class="bar"><div style="width:{pct}%"></div></div></div>""", unsafe_allow_html=True)
     sub = upcoming_subperiods(chart, now, 1)[0]
-    st.markdown(f"""<div class="card"><p class="muted">Current sub-period · until {sub['end']:%b %Y}</p>
-      <p class="big">{sub['md']}–{sub['lord']}: {CHAPTER_THEME[sub['lord']]}</p></div>""",
+    st.markdown(f"""<div class="card"><p class="muted">{t('current_sub', date=f"{sub['end']:%b %Y}")}</p>
+      <p class="big">{planet_name(sub['md'])}–{planet_name(sub['lord'])}: {pick(CHAPTER_THEME_T[sub['lord']])}</p></div>""",
                 unsafe_allow_html=True)
     if chart["time_unknown"]:
-        st.caption("Reading from the Moon chart, since the birth time is unknown.")
+        st.caption(t("moon_chart_caption"))
 
 # ----- ASK DISHARA -----
 with chat:
-    convs = list_conversations(pid)
+    convs = list_conversations(uid, pid)
     titles = {c["id"]: f"{c['created_at'][:10]} · {c['title']}" for c in convs}
     b1, b2 = st.columns([1, 2])
-    if b1.button("New conversation"):
+    if b1.button(t("new_conv")):
         reset_conversation()
         st.rerun()
-    pick = b2.selectbox("Past conversations", list(titles), index=None, format_func=lambda i: titles[i],
-                        placeholder=f"Open a past conversation ({len(convs)})",
-                        key=f"conv_pick_{pid}_{st.session_state.conv_nonce}",
-                        label_visibility="collapsed")
-    if pick and pick != st.session_state.conv_id:
-        st.session_state.conv_id = pick
-        st.session_state.conv_msgs = load_conversation(pick)
+    pk = b2.selectbox("past", list(titles), index=None, format_func=lambda i: titles[i],
+                      placeholder=t("past_conv", n=len(convs)),
+                      key=f"conv_pick_{pid}_{st.session_state.conv_nonce}", label_visibility="collapsed")
+    if pk and pk != st.session_state.conv_id:
+        st.session_state.conv_id = pk
+        st.session_state.conv_msgs = load_conversation(uid, pk)
 
     if st.session_state.conv_id and st.session_state.conv_id in titles:
-        st.markdown(f"<p class='muted'>{html.escape(titles[st.session_state.conv_id])}</p>",
-                    unsafe_allow_html=True)
+        st.markdown(f"<p class='muted'>{html.escape(titles[st.session_state.conv_id])}</p>", unsafe_allow_html=True)
     elif not st.session_state.conv_msgs:
-        st.markdown(f"<p class='muted'>Ask anything about {html.escape(pname)}'s chart: career, "
-                    f"relationships, timing, strengths...</p>", unsafe_allow_html=True)
+        st.markdown(f"<p class='muted'>{t('ask_intro', name=html.escape(pname))}</p>", unsafe_allow_html=True)
 
     for m in st.session_state.conv_msgs:
         with st.chat_message(m["role"], avatar="🌅" if m["role"] == "assistant" else None):
             st.markdown(m["content"])
 
-    q = st.chat_input("Ask anything about this chart")
+    q = st.chat_input(t("chat_ph"))
     if q:
         if not st.session_state.conv_id:
             st.session_state.conv_id = new_conversation(uid, pid, q)
@@ -950,16 +1723,24 @@ with chat:
         with st.chat_message("user"):
             st.markdown(q)
         if any(w in q.lower() for w in CRISIS_WORDS):
-            answer = CRISIS_REPLY
+            answer = t("crisis_reply")
         else:
-            past_topics = [c["title"] for c in convs if c["id"] != cid][:8]
-            current = "\n".join(f"{m['role']}: {m['content']}"
-                                for m in st.session_state.conv_msgs[-11:-1])
-            prompt = (f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
-                      f"TOPICS FROM EARLIER CONVERSATIONS: {'; '.join(past_topics) or 'None'}\n\n"
-                      f"THIS CONVERSATION SO FAR:\n{current or 'None'}\n\nQUESTION: {q}")
-            with st.spinner("Dishara is studying the chart..."):
-                answer = ask_dishara(prompt, lang, pname, prel)
+            with st.spinner(t("thinking")):
+                past_topics = [c["title"] for c in convs if c["id"] != cid][:8]
+                current = "\n".join(f"{m['role']}: {m['content']}"
+                                    for m in st.session_state.conv_msgs[-11:-1])
+                topic_text = q + " " + " ".join(m["content"] for m in st.session_state.conv_msgs[-5:-1]
+                                                if m["role"] == "user")
+                keys = detect_areas(topic_text)
+                if keys:
+                    area_txt = "\n\n".join(area_block(area_analysis(chart, k, now)) for k in keys[:3])
+                else:
+                    area_txt = "OVERVIEW OF ALL LIFE AREAS:\n" + areas_summary(chart, now)
+                prompt = (f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
+                          f"AREA ANALYSIS (calculated by Dishara's engine):\n{area_txt}\n\n"
+                          f"TOPICS FROM EARLIER CONVERSATIONS: {'; '.join(past_topics) or 'None'}\n\n"
+                          f"THIS CONVERSATION SO FAR:\n{current or 'None'}\n\nQUESTION: {q}")
+                answer = ask_dishara(prompt, pname, prel) or t("resting")
         st.session_state.conv_msgs.append({"role": "assistant", "content": answer})
         save_message(uid, cid, "assistant", answer)
         with st.chat_message("assistant", avatar="🌅"):
@@ -967,96 +1748,142 @@ with chat:
 
 # ----- KUNDALI -----
 with kundali:
-    options = ["D1 · Rashi (overall life)"] if chart["time_unknown"] else list(VARGAS)
-    vname = st.selectbox("Chart", options)
-    n = VARGAS[vname]
+    varga_opts = [VARGA_LIST[0]] if chart["time_unknown"] else VARGA_LIST
+    n = st.selectbox(t("chart_select"), [v[0] for v in varga_opts],
+                     format_func=lambda num: pick(dict(VARGA_LIST)[num]))
     st.markdown(kundali_svg(chart, n), unsafe_allow_html=True)
-    st.caption("North Indian style · numbers show the sign in each house"
-               + (" · Moon chart (birth time unknown; divisional charts need the exact time)"
-                  if chart["time_unknown"] else ""))
-    rows = [{"Planet": nm + (" (R)" if p["retro"] else ""), "Sign": SIGNS[p["sign"]],
-             "Degree": f"{p['deg']:.2f}°", "House": p["house"], "Strength": p["dignity"] or "-",
-             "Nakshatra": f"{NAKSHATRAS[p['nak']]} {p['pada']}",
-             "D9": SHORT[p["vargas"][9]], "D10": SHORT[p["vargas"][10]]}
+    st.caption(t("chart_caption") + (t("chart_caption_moon") if chart["time_unknown"] else ""))
+    nb_set = neecha_bhanga(chart)
+    rows = [{t("col_planet"): planet_name(nm), t("col_sign"): sign_name(p["sign"]),
+             t("col_degree"): f"{p['deg']:.2f}°", t("col_house"): p["house"],
+             t("col_role"): pick(ROLE_T[chart["roles"][nm]]),
+             t("col_notes"): ", ".join(pick(NOTE_T[x]) for x in planet_notes(chart, nm, nb_set)) or "-",
+             t("col_nak"): f"{nak_name(p['nak'])} {p['pada']}",
+             "D9": short_sign(p["vargas"][9]), "D10": short_sign(p["vargas"][10])}
             for nm, p in chart["planets"].items()]
     st.dataframe(rows, hide_index=True)
+    with st.expander(t("glossary_title")):
+        st.markdown(
+            "- **Lagna lord:** the ruler of your ascendant; always supportive, it represents you.\n"
+            "- **Yogakaraka:** rules both a kendra and a trikona for your Lagna; the most "
+            "beneficial planet in your chart.\n"
+            "- **Functional benefic:** supportive for your Lagna; its periods tend to help.\n"
+            "- **Neutral:** mixed; results depend on its placement and company.\n"
+            "- **Functional malefic:** brings results through effort and patience for your Lagna. "
+            "Not 'bad', just demanding.\n"
+            "- **Combust:** very close to the Sun, so its qualities are partly hidden.\n"
+            "- **Vargottama:** same sign in D1 and D9; extra strength and consistency.\n"
+            "- **Debilitation cancelled:** a weak placement that turns into strength (Neecha Bhanga).")
+        if L() != "en":
+            st.caption(t("en_detail_note"))
+        if chart["time_unknown"]:
+            st.caption(t("roles_moon"))
+
+    st.markdown(f"#### {t('life_areas')}")
+    area_rows = []
+    for key in AREAS:
+        an = area_analysis(chart, key, now)
+        area_rows.append({t("col_area"): pick(AREA_T[key]), t("col_outlook"): pick(VERDICT_T[an["verdict"]]),
+                          t("col_strength"): an["supportive"][0] if an["supportive"] else "-",
+                          t("col_dt"): (fmt_windows(an["windows"][:1]) or t("not_2y"))})
+    st.dataframe(area_rows, hide_index=True)
+    st.caption(t("areas_caption"))
+    if L() != "en":
+        st.caption(t("en_detail_note"))
+
+    av = chart.get("av")
+    if av:
+        st.markdown(f"#### {t('av_title')}")
+        av_rows = []
+        for h in range(1, 13):
+            s = (chart["asc_sign"] + h - 1) % 12
+            pts = av["sav"][s]
+            av_rows.append({t("col_house"): h, t("col_sign"): short_sign(s), t("col_points"): pts,
+                            t("col_av_strength"): t("av_strong") if pts >= 28 else
+                            t("av_avg") if pts >= 25 else t("av_build")})
+        st.dataframe(av_rows, hide_index=True)
+        st.caption(t("av_caption", total=sum(av["sav"])))
+
     ys = find_yogas(chart)
     if ys:
-        st.markdown("#### Yogas")
+        st.markdown(f"#### {t('yogas')}")
         for y in ys:
             st.markdown(f"- {y}")
-    st.markdown("#### Life chapters")
+        if L() != "en":
+            st.caption(t("en_detail_note"))
+    st.markdown(f"#### {t('life_chapters')}")
     for d in chart["dashas"]:
-        mark = "  ← now" if d is cur else ""
-        st.markdown(f"**{d['lord']}** · {d['start']:%b %Y} – {d['end']:%b %Y}{mark}")
+        mark = f"  ← {t('now')}" if d is cur else ""
+        st.markdown(f"**{planet_name(d['lord'])}** · {d['start']:%b %Y} – {d['end']:%b %Y}{mark}")
 
-# ----- MATCH -----
+# ----- MATCH MAKING -----
 with match:
     if len(charts) < 2:
-        st.info("Add your partner's chart first: tap **+ Add chart** and choose "
-                "'Spouse / Partner'. Then come back here.")
+        st.info(t("add_partner"))
     else:
         m1, m2 = st.columns(2)
-        a = m1.selectbox("Groom / Partner 1", ids, index=0, format_func=chart_label, key="m_a")
-        b = m2.selectbox("Bride / Partner 2", ids, index=1, format_func=chart_label, key="m_b")
+        a = m1.selectbox(t("partner1"), ids, index=0, format_func=chart_label, key="m_a")
+        b = m2.selectbox(t("partner2"), ids, index=1, format_func=chart_label, key="m_b")
         if a == b:
-            st.warning("Choose two different charts.")
+            st.warning(t("choose_two"))
         else:
-            if st.button("Check compatibility"):
+            if st.button(t("check_compat")):
                 ca, cb = get_chart(by_id[a]), get_chart(by_id[b])
                 st.session_state.match = {"a": a, "b": b, "rows": ashtakoot(ca, cb),
                                           "manglik": (manglik(ca), manglik(cb)), "reading": None}
             mres = st.session_state.get("match")
             if mres and mres["a"] == a and mres["b"] == b:
                 total = sum(r[1] for r in mres["rows"])
-                verdict = ("Excellent" if total >= 32 else "Very good" if total >= 25
-                           else "Good" if total >= 18 else "Needs understanding and effort")
-                st.markdown(f"""<div class="card"><p class="muted">Ashtakoot Guna Milan</p>
+                vkey = ("v_excellent" if total >= 32 else "v_vgood" if total >= 25
+                        else "v_good" if total >= 18 else "v_effort")
+                st.markdown(f"""<div class="card"><p class="muted">{t('guna_milan')}</p>
                   <p style="{BIG_NUMBER}">{total:g}<span style="{SMALL_SUFFIX}"> / 36</span></p>
-                  <p class="big">{verdict}</p>
-                  <p class="muted">18+ is traditionally considered suitable. A score is one view;
-                  the full charts and the two people matter more.</p></div>""", unsafe_allow_html=True)
-                st.dataframe([{"Koota": r[0], "Score": f"{r[1]:g} / {r[2]}", "What it reflects": r[3]}
-                              for r in mres["rows"]], hide_index=True)
+                  <p class="big">{t(vkey)}</p>
+                  <p class="muted">{t('match_note')}</p></div>""", unsafe_allow_html=True)
+                st.dataframe([{t("col_koota"): pick(KOOTA_T[r[0]]), t("col_score"): f"{r[1]:g} / {r[2]}",
+                               t("col_reflects"): r[3]} for r in mres["rows"]], hide_index=True)
+                if L() != "en":
+                    st.caption(t("en_detail_note"))
                 (la, ma), (lb, mb) = mres["manglik"]
-                st.markdown(f"**Mars placement (Manglik check)**  \n"
-                            f"{html.escape(by_id[a]['name'])}: {manglik_text(la, ma)}  \n"
-                            f"{html.escape(by_id[b]['name'])}: {manglik_text(lb, mb)}")
-                st.caption("Traditionally, if both partners have this Mars placement it balances out. "
-                           "It's one factor among many, not a verdict.")
-                if st.button("Get detailed compatibility reading"):
+                st.markdown(f"**{t('manglik_title')}**  \n"
+                            f"{html.escape(by_id[a]['name'])}: {manglik_text_ui(la, ma)}  \n"
+                            f"{html.escape(by_id[b]['name'])}: {manglik_text_ui(lb, mb)}")
+                st.caption(t("manglik_caption"))
+                if st.button(t("detailed_btn")):
                     ca, cb = get_chart(by_id[a]), get_chart(by_id[b])
                     koota_txt = "\n".join(f"{r[0]}: {r[1]:g}/{r[2]} ({r[3]})" for r in mres["rows"])
+                    marr_a = area_block(area_analysis(ca, "marriage", now))
+                    marr_b = area_block(area_analysis(cb, "marriage", now))
                     prompt = (
                         f"COMPATIBILITY REQUEST between {by_id[a]['name']} (Partner 1) and "
                         f"{by_id[b]['name']} (Partner 2).\n\nPARTNER 1 CHART:\n{chart_text(ca, now)}\n\n"
-                        f"PARTNER 2 CHART:\n{chart_text(cb, now)}\n\nASHTAKOOT ({total:g}/36):\n{koota_txt}\n\n"
+                        f"PARTNER 1 MARRIAGE ANALYSIS:\n{marr_a}\n\n"
+                        f"PARTNER 2 CHART:\n{chart_text(cb, now)}\n\n"
+                        f"PARTNER 2 MARRIAGE ANALYSIS:\n{marr_b}\n\nASHTAKOOT ({total:g}/36):\n{koota_txt}\n\n"
                         f"MANGLIK: Partner 1 {manglik_text(la, ma)}; Partner 2 {manglik_text(lb, mb)}\n\n"
-                        f"Write a detailed, balanced compatibility reading with bold headings: "
-                        f"**Overall** (2 lines putting the score in context), **Where you naturally connect** "
-                        f"(3 bullets citing kootas and chart factors such as 7th houses, Venus, Moon and D9), "
-                        f"**Where you'll need understanding** (2-3 bullets framed as growth areas with "
-                        f"practical advice), **Making it work** (3 practical tips). Never predict divorce "
-                        f"or call the match doomed. Under 350 words.")
-                    with st.spinner("Dishara is comparing both charts..."):
-                        mres["reading"] = ask_dishara(prompt, lang, pname, "Self")
+                        f"Write a detailed, balanced compatibility reading with bold headings (translated into "
+                        f"the reply language): Overall (2 lines putting the score in context), Where you "
+                        f"naturally connect (3 bullets citing kootas and chart factors such as 7th houses, Venus, "
+                        f"Moon and D9), Where you'll need understanding (2-3 bullets framed as growth areas with "
+                        f"practical advice), Making it work (3 practical tips). Never predict divorce or call the "
+                        f"match doomed. Under 350 words.")
+                    with st.spinner(t("comparing")):
+                        mres["reading"] = ask_dishara(prompt, pname, "Self") or t("resting")
                 if mres.get("reading"):
                     st.markdown(mres["reading"])
 
 # ----- FOOTER -----
 st.divider()
 if "paste-your-link" not in FEEDBACK_URL:
-    st.markdown(f"<p class='muted' style='text-align:center'>Help shape Dishara: "
-                f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>share your feedback</a></p>",
+    st.markdown(f"<p class='muted' style='text-align:center'>{t('feedback')} "
+                f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>{t('feedback_link')}</a></p>",
                 unsafe_allow_html=True)
+st.markdown(f"<p class='muted' style='text-align:center'>{t('signed_in', email=html.escape(st.user.email))}</p>",
+            unsafe_allow_html=True)
 f1, f2 = st.columns(2)
-if f1.button("Edit this chart"):
+if f1.button(t("edit_chart")):
     st.session_state.mode = "edit"
     st.rerun()
-if f2.button("Sign out"):
-    try:
-        db().auth.sign_out()
-    except Exception:
-        pass
+if f2.button(t("sign_out")):
     st.session_state.clear()
-    st.rerun()
+    st.logout()
