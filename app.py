@@ -862,11 +862,15 @@ with home:
                 st.markdown(f"**→ {lo}–{hi} · {band_name} (today):** {meaning}")
             else:
                 st.markdown(f"{lo}–{hi} · {band_name}: {meaning}")
-        st.caption("How it's calculated: the score starts at 45 and adds points from three traditional "
-                   "checks of today's Moon: Tara Bala, today's nakshatra counted from your birth star "
-                   "(up to 20); Chandra Bala, today's Moon sign counted from your birth Moon (20); and "
-                   "the house the Moon moves through in your chart (15). There are no bad days, only "
-                   "days suited to different things.")
+        st.markdown("**About this score**")
+        st.caption("Your daily score comes from three traditional Vedic checks of where the Moon "
+                   "is today compared with your birth chart: Tara Bala (today's nakshatra counted "
+                   "from your birth star), Chandra Bala (today's Moon sign counted from your birth "
+                   "Moon) and the house the Moon is moving through in your chart.")
+        st.caption("The Moon moves quickly. It changes nakshatra about once a day and sign every "
+                   "two to three days, so the score can shift during the day when it crosses into "
+                   "a new one. Think of it as a gentle guide to the day's mood, not a fixed "
+                   "prediction. There are no bad days, only days suited to different things.")
 
     tips_cache = st.session_state.setdefault("tips", {})
     tip_key = f"{pid}|{today}"
