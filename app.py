@@ -341,7 +341,7 @@ def daily_indicators(chart, now):
     tara = TARAS[(nak_now - chart["planets"]["Moon"]["nak"]) % 9]
     msign = int(moon_now // 30)
     chandra = (msign - chart["planets"]["Moon"]["sign"]) % 12 + 1
-        good_t, good_c = tara in GOOD_TARAS, chandra in (1, 3, 6, 7, 10, 11)
+    good_t, good_c = tara in GOOD_TARAS, chandra in (1, 3, 6, 7, 10, 11)
     house = house_of(chart, msign)
     score = (45 + (20 if good_t else 10 if tara == "Janma" else 0)
              + (20 if good_c else 0)
