@@ -1,6 +1,11 @@
 import os
 import time
 import html
+import io
+import math
+import urllib.parse
+import requests
+from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date, timedelta, timezone
 
 import streamlit as st
@@ -285,6 +290,49 @@ T = {
                 "আমি একটু বিশ্রাম নিচ্ছি। অনুগ্রহ করে এক মিনিট পরে আবার জিজ্ঞাসা করুন।"),
 }
 
+T.update({
+    "pan_title": ("Today's Panchang", "आज का पंचांग", "আজকের পঞ্চাঙ্গ"),
+    "pan_change": ("Change city", "शहर बदलें", "শহর বদলান"),
+    "pan_for": ("For {place}", "स्थान: {place}", "স্থান: {place}"),
+    "pan_sunrise": ("Sunrise", "सूर्योदय", "সূর্যোদয়"),
+    "pan_sunset": ("Sunset", "सूर्यास्त", "সূর্যাস্ত"),
+    "pan_vara": ("Day", "वार", "বার"),
+    "pan_tithi": ("Tithi", "तिथि", "তিথি"),
+    "pan_yoga": ("Yoga", "योग", "যোগ"),
+    "pan_karana": ("Karana", "करण", "করণ"),
+    "pan_times": ("Key timings today", "आज के मुख्य समय", "আজকের গুরুত্বপূর্ণ সময়"),
+    "pan_rahu": ("Rahu Kaal", "राहु काल", "রাহু কাল"),
+    "pan_rahu_note": ("Traditionally avoided for new starts and important beginnings.",
+                      "परंपरागत रूप से नई शुरुआत और महत्वपूर्ण कार्यों के लिए टाला जाता है।",
+                      "ঐতিহ্যগতভাবে নতুন শুরু ও গুরুত্বপূর্ণ কাজের জন্য এড়ানো হয়।"),
+    "pan_rahu_now": ("Rahu Kaal is on now, until {end}.", "अभी राहु काल चल रहा है, {end} तक।",
+                     "এখন রাহু কাল চলছে, {end} পর্যন্ত।"),
+    "pan_yama": ("Yamaganda", "यमगंड", "যমগণ্ড"),
+    "pan_gulika": ("Gulika Kaal", "गुलिक काल", "গুলিক কাল"),
+    "pan_abhijit": ("Abhijit Muhurta", "अभिजित मुहूर्त", "অভিজিৎ মুহূর্ত"),
+    "pan_abhijit_note": ("Traditionally auspicious for important work.",
+                         "परंपरागत रूप से महत्वपूर्ण कार्यों के लिए शुभ।",
+                         "ঐতিহ্যগতভাবে গুরুত্বপূর্ণ কাজের জন্য শুভ।"),
+    "pan_abhijit_wed": ("(traditionally not used on Wednesdays)", "(बुधवार को परंपरागत रूप से नहीं लिया जाता)",
+                        "(বুধবারে ঐতিহ্যগতভাবে ব্যবহৃত হয় না)"),
+    "pan_note": ("Tithi, nakshatra, yoga and karana are shown as at sunrise, following tradition. Timings are for "
+                 "the selected city; the birth place is used by default.",
+                 "परंपरा के अनुसार तिथि, नक्षत्र, योग और करण सूर्योदय के समय के दिखाए गए हैं। समय चुने गए शहर के अनुसार "
+                 "हैं; डिफ़ॉल्ट रूप से जन्म स्थान लिया जाता है।",
+                 "ঐতিহ্য অনুযায়ী তিথি, নক্ষত্র, যোগ ও করণ সূর্যোদয়ের সময়ের দেখানো হয়েছে। সময়গুলি বেছে নেওয়া শহরের "
+                 "জন্য; ডিফল্টভাবে জন্মস্থান ব্যবহৃত হয়।"),
+    "pan_error": ("Panchang couldn't be calculated right now.", "पंचांग अभी गणना नहीं हो सका।",
+                  "পঞ্চাঙ্গ এখন গণনা করা যায়নি।"),
+    "share_title": ("Share your Dishara card", "अपना दिशारा कार्ड शेयर करें", "আপনার দিশারা কার্ড শেয়ার করুন"),
+    "share_pick": ("Card", "कार्ड", "কার্ড"),
+    "share_energy": ("Today's energy", "आज की ऊर्जा", "আজকের শক্তি"),
+    "share_profile": ("My chart", "मेरी कुंडली", "আমার কুণ্ডলী"),
+    "share_download": ("Download card", "कार्ड डाउनलोड करें", "কার্ড ডাউনলোড করুন"),
+    "share_whatsapp": ("Share on WhatsApp", "WhatsApp पर शेयर करें", "WhatsApp-এ শেয়ার করুন"),
+    "share_hint": ("Download the card, then attach it in WhatsApp or Instagram. Card text is in English for now.",
+                   "कार्ड डाउनलोड करें, फिर उसे WhatsApp या Instagram में जोड़ें। कार्ड का टेक्स्ट अभी अंग्रेज़ी में है।",
+                   "কার্ডটি ডাউনলোড করে WhatsApp বা Instagram-এ যুক্ত করুন। কার্ডের লেখা আপাতত ইংরেজিতে।"),
+})  
 def t(key, **kw):
     s = pick(T[key])
     return s.format(**kw) if kw else s
@@ -1490,7 +1538,247 @@ def ask_dishara(prompt, chart_name, rel):
             except errors.ClientError:
                 break
     return None
+# ---------------- PANCHANG ----------------
+TITHI_T = [("Pratipada", "प्रतिपदा", "প্রতিপদ"), ("Dwitiya", "द्वितीया", "দ্বিতীয়া"), ("Tritiya", "तृतीया", "তৃতীয়া"),
+           ("Chaturthi", "चतुर्थी", "চতুর্থী"), ("Panchami", "पंचमी", "পঞ্চমী"), ("Shashthi", "षष्ठी", "ষষ্ঠী"),
+           ("Saptami", "सप्तमी", "সপ্তমী"), ("Ashtami", "अष्टमी", "অষ্টমী"), ("Navami", "नवमी", "নবমী"),
+           ("Dashami", "दशमी", "দশমী"), ("Ekadashi", "एकादशी", "একাদশী"), ("Dwadashi", "द्वादशी", "দ্বাদশী"),
+           ("Trayodashi", "त्रयोदशी", "ত্রয়োদশী"), ("Chaturdashi", "चतुर्दशी", "চতুর্দশী"),
+           ("Purnima", "पूर्णिमा", "পূর্ণিমা"), ("Amavasya", "अमावस्या", "অমাবস্যা")]
+PAKSHA_T = [("Shukla", "शुक्ल", "শুক্ল"), ("Krishna", "कृष्ण", "কৃষ্ণ")]
+VARA_T = [("Somavara (Monday)", "सोमवार", "সোমবার"), ("Mangalavara (Tuesday)", "मंगलवार", "মঙ্গলবার"),
+          ("Budhavara (Wednesday)", "बुधवार", "বুধবার"), ("Guruvara (Thursday)", "गुरुवार", "বৃহস্পতিবার"),
+          ("Shukravara (Friday)", "शुक्रवार", "শুক্রবার"), ("Shanivara (Saturday)", "शनिवार", "শনিবার"),
+          ("Ravivara (Sunday)", "रविवार", "রবিবার")]
+YOGA_T = [("Vishkambha", "विष्कुंभ", "বিষ্কম্ভ"), ("Priti", "प्रीति", "প্রীতি"), ("Ayushman", "आयुष्मान", "আয়ুষ্মান"),
+          ("Saubhagya", "सौभाग्य", "সৌভাগ্য"), ("Shobhana", "शोभन", "শোভন"), ("Atiganda", "अतिगंड", "অতিগণ্ড"),
+          ("Sukarma", "सुकर्मा", "সুকর্মা"), ("Dhriti", "धृति", "ধৃতি"), ("Shula", "शूल", "শূল"),
+          ("Ganda", "गंड", "গণ্ড"), ("Vriddhi", "वृद्धि", "বৃদ্ধি"), ("Dhruva", "ध्रुव", "ধ্রুব"),
+          ("Vyaghata", "व्याघात", "ব্যাঘাত"), ("Harshana", "हर्षण", "হর্ষণ"), ("Vajra", "वज्र", "বজ্র"),
+          ("Siddhi", "सिद्धि", "সিদ্ধি"), ("Vyatipata", "व्यतीपात", "ব্যতীপাত"), ("Variyan", "वरीयान", "বরীয়ান"),
+          ("Parigha", "परिघ", "পরিঘ"), ("Shiva", "शिव", "শিব"), ("Siddha", "सिद्ध", "সিদ্ধ"),
+          ("Sadhya", "साध्य", "সাধ্য"), ("Shubha", "शुभ", "শুভ"), ("Shukla", "शुक्ल", "শুক্ল"),
+          ("Brahma", "ब्रह्म", "ব্রহ্ম"), ("Indra", "इंद्र", "ইন্দ্র"), ("Vaidhriti", "वैधृति", "বৈধৃতি")]
+KARANA_T = [("Bava", "बव", "বব"), ("Balava", "बालव", "বালব"), ("Kaulava", "कौलव", "কৌলব"),
+            ("Taitila", "तैतिल", "তৈতিল"), ("Gara", "गर", "গর"), ("Vanija", "वणिज", "বণিজ"),
+            ("Vishti (Bhadra)", "विष्टि (भद्रा)", "বিষ্টি (ভদ্রা)"), ("Shakuni", "शकुनि", "শকুনি"),
+            ("Chatushpada", "चतुष्पद", "চতুষ্পদ"), ("Naga", "नाग", "নাগ"), ("Kimstughna", "किंस्तुघ्न", "কিংস্তুঘ্ন")]
+# Which eighth of the daytime each period falls in, by weekday (Monday = 0)
+RAHU_PART = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
+YAMA_PART = {0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6, 6: 5}
+GULIKA_PART = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 7}
 
+def jd_to_ist(jd):
+    y, m, d, h = swe.revjul(jd)
+    return datetime(y, m, d) + timedelta(hours=h) + timedelta(hours=IST)
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def panchang(day_iso, lat, lon):
+    day = date.fromisoformat(day_iso)
+    start = datetime.combine(day, datetime.min.time()) - timedelta(hours=IST)   # local midnight, in UTC
+    jd0 = julian_day(start)
+    geopos = (lon, lat, 0.0)
+    _, rise = swe.rise_trans(jd0, swe.SUN, swe.CALC_RISE, geopos, 0.0, 0.0, swe.FLG_MOSEPH)
+    _, sett = swe.rise_trans(jd0, swe.SUN, swe.CALC_SET, geopos, 0.0, 0.0, swe.FLG_MOSEPH)
+    rise_jd, set_jd = rise[0], sett[0]
+    sun, _ = sidereal_lon(rise_jd, swe.SUN)
+    moon, _ = sidereal_lon(rise_jd, swe.MOON)
+    diff = (moon - sun) % 360
+    tithi = int(diff // 12)
+    tithi_name = 14 if tithi == 14 else 15 if tithi == 29 else tithi % 15
+    k = int(diff // 6)
+    karana = 10 if k == 0 else 7 if k == 57 else 8 if k == 58 else 9 if k == 59 else (k - 1) % 7
+    sunrise, sunset = jd_to_ist(rise_jd), jd_to_ist(set_jd)
+    daylen = sunset - sunrise
+    seg = daylen / 8
+    wd = day.weekday()
+
+    def part(n):
+        s = sunrise + seg * (n - 1)
+        return (s, s + seg)
+
+    mid, mu = sunrise + daylen / 2, daylen / 15
+    return {"sunrise": sunrise, "sunset": sunset, "wd": wd,
+            "paksha": 0 if tithi < 15 else 1, "tithi_name": tithi_name,
+            "nak": int(moon // NAK_LEN), "yoga": int(((sun + moon) % 360) // NAK_LEN), "karana": karana,
+            "rahu": part(RAHU_PART[wd]), "yama": part(YAMA_PART[wd]), "gulika": part(GULIKA_PART[wd]),
+            "abhijit": (mid - mu / 2, mid + mu / 2)}
+
+def fmt_time(d):
+    return d.strftime("%I:%M %p").lstrip("0")
+
+def panchang_section(profile, now):
+    st.markdown(f"#### {t('pan_title')}")
+    default = (profile["place"], profile["lat"], profile["lon"])
+    with st.expander(t("pan_change")):
+        q = st.text_input(t("place_label"), key="pan_q", placeholder=t("place_ph"))
+        if len(q.strip()) >= 3:
+            opts = search_places(q.strip())
+            if opts:
+                labels = [o[0] for o in opts]
+                pk = st.selectbox(t("select_place"), labels, index=None,
+                                  placeholder=t("choose_place"), key="pan_pick")
+                if pk:
+                    st.session_state.pan_place = opts[labels.index(pk)]
+            else:
+                st.warning(t("no_match"))
+    place = st.session_state.get("pan_place", default)
+    now_ist = now + timedelta(hours=IST)
+    try:
+        p = panchang(now_ist.date().isoformat(), float(place[1]), float(place[2]))
+    except Exception:
+        st.caption(t("pan_error"))
+        return
+    rows = [(t("pan_sunrise"), fmt_time(p["sunrise"])), (t("pan_sunset"), fmt_time(p["sunset"])),
+            (t("pan_vara"), pick(VARA_T[p["wd"]])),
+            (t("pan_tithi"), f"{pick(PAKSHA_T[p['paksha']])} {pick(TITHI_T[p['tithi_name']])}"),
+            (t("col_nak"), nak_name(p["nak"])), (t("pan_yoga"), pick(YOGA_T[p["yoga"]])),
+            (t("pan_karana"), pick(KARANA_T[p["karana"]]))]
+    row_html = "".join(f"<tr><td style='padding:3px 16px 3px 0;color:#AFA9EC;border:none'>{k}</td>"
+                       f"<td style='padding:3px 0;border:none'>{v}</td></tr>" for k, v in rows)
+    place_short = html.escape(str(place[0]).split(",")[0])
+    st.markdown(f"<div class='card'><p class='muted'>{t('pan_for', place=place_short)} · "
+                f"{now_ist:%d %b %Y}</p><table style='border:none;margin-top:6px'>{row_html}</table></div>",
+                unsafe_allow_html=True)
+
+    def span(a):
+        return f"{fmt_time(a[0])} – {fmt_time(a[1])}"
+
+    rahu_now = p["rahu"][0] <= now_ist < p["rahu"][1]
+    alert = (f"<p style='color:#FAC775;font-weight:500;margin:6px 0 0'>{t('pan_rahu_now', end=fmt_time(p['rahu'][1]))}</p>"
+             if rahu_now else "")
+    wed = (" " + t("pan_abhijit_wed")) if p["wd"] == 2 else ""
+    st.markdown(f"""<div class="card"><p class="muted">{t('pan_times')}</p>
+      <p class="big">{t('pan_rahu')}: {span(p['rahu'])}</p>
+      <p class="muted">{t('pan_rahu_note')}</p>{alert}
+      <p style="margin:10px 0 0">{t('pan_yama')}: {span(p['yama'])}</p>
+      <p style="margin:4px 0 0">{t('pan_gulika')}: {span(p['gulika'])}</p>
+      <p class="gold" style="margin:10px 0 0;font-weight:500">{t('pan_abhijit')}: {span(p['abhijit'])}{wed}</p>
+      <p class="muted">{t('pan_abhijit_note')}</p></div>""", unsafe_allow_html=True)
+    st.caption(t("pan_note"))
+
+# ---------------- SHAREABLE CARDS ----------------
+APP_URL = "https://dishara.streamlit.app"
+CW, CH = 1080, 1350
+C_BG, C_GOLD, C_ORANGE = (38, 33, 92), (250, 199, 117), (239, 159, 39)
+C_LAV, C_MUTED, C_WHITE, C_LINE = (206, 203, 246), (175, 169, 236), (238, 237, 254), (127, 119, 221)
+FONT_URLS = {"regular": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf",
+             "bold": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-SemiBold.ttf"}
+
+@st.cache_resource
+def font_bytes(kind):
+    try:
+        r = requests.get(FONT_URLS[kind], timeout=10)
+        r.raise_for_status()
+        return r.content
+    except Exception:
+        return None
+
+def card_font(size, bold=False):
+    data = font_bytes("bold" if bold else "regular")
+    if data:
+        return ImageFont.truetype(io.BytesIO(data), size)
+    return ImageFont.load_default(size=size)
+
+def center_text(d, y, text, f, fill):
+    w = d.textlength(text, font=f)
+    d.text(((CW - w) / 2, y), text, font=f, fill=fill)
+
+def wrap_text(d, text, f, max_w):
+    lines, cur = [], ""
+    for word in text.split():
+        test = (cur + " " + word).strip()
+        if d.textlength(test, font=f) <= max_w:
+            cur = test
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines
+
+def card_base():
+    img = Image.new("RGB", (CW, CH), C_BG)
+    d = ImageDraw.Draw(img)
+    cx, cy, r = CW // 2, 260, 110
+    for deg in (20, 55, 90, 125, 160):
+        a = math.radians(deg)
+        d.line([(cx + (r + 25) * math.cos(a), cy - (r + 25) * math.sin(a)),
+                (cx + (r + 60) * math.cos(a), cy - (r + 60) * math.sin(a))], fill=C_GOLD, width=8)
+    d.pieslice([cx - r, cy - r, cx + r, cy + r], 180, 360, fill=C_ORANGE)
+    r2 = int(r * 0.58)
+    d.pieslice([cx - r2, cy - r2, cx + r2, cy + r2], 180, 360, fill=C_GOLD)
+    d.line([(cx - r - 90, cy), (cx + r + 90, cy)], fill=C_LINE, width=4)
+    center_text(d, 290, "Dishara", card_font(84, True), C_GOLD)
+    d.line([(140, 1200), (CW - 140, 1200)], fill=(83, 74, 183), width=2)
+    center_text(d, 1225, "Your stars, your direction", card_font(32), C_LAV)
+    center_text(d, 1272, APP_URL.replace("https://", ""), card_font(34, True), C_ORANGE)
+    return img, d
+
+def energy_card(name, date_str, score, label, theme):
+    img, d = card_base()
+    center_text(d, 430, f"{name}'s energy today", card_font(44), C_LAV)
+    center_text(d, 492, date_str, card_font(34), C_MUTED)
+    center_text(d, 540, str(score), card_font(220, True), C_GOLD)
+    center_text(d, 820, f"out of 100 · {label}", card_font(48, True), C_WHITE)
+    y = 930
+    for line in wrap_text(d, theme, card_font(44), CW - 220):
+        center_text(d, y, line, card_font(44), C_LAV)
+        y += 62
+    return img
+
+def profile_card(name, lines):
+    img, d = card_base()
+    center_text(d, 430, name, card_font(64, True), C_WHITE)
+    y = 540
+    for label, value in lines:
+        center_text(d, y, label, card_font(32), C_MUTED)
+        y += 46
+        for ln in wrap_text(d, value, card_font(42, True), CW - 200):
+            center_text(d, y, ln, card_font(42, True), C_GOLD)
+            y += 56
+        y += 30
+    return img
+
+def to_png(img):
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+def profile_lines(chart, cur, now):
+    P = chart["planets"]
+    lines = []
+    if not chart["time_unknown"]:
+        lines.append(("Rising sign (Lagna)", SHORT[chart["asc_sign"]]))
+    lines.append(("Moon sign & nakshatra", f"{SHORT[P['Moon']['sign']]} · {NAKSHATRAS[P['Moon']['nak']]}"))
+    lines.append(("Current life chapter", f"{cur['lord']} period: {CHAPTER_THEME_T[cur['lord']][0]}"))
+    ranked = sorted((area_analysis(chart, k, now) for k in AREAS), key=lambda a: -a["net"])[:2]
+    lines.append(("Natural strengths", " & ".join(a["label"] for a in ranked)))
+    return lines
+
+def share_section(chart, pname, cur, ind, today, now):
+    st.markdown(f"#### {t('share_title')}")
+    kind = st.radio(t("share_pick"), ["energy", "profile"], horizontal=True, key="share_kind",
+                    format_func=lambda k: t("share_energy") if k == "energy" else t("share_profile"))
+    if kind == "energy":
+        img = energy_card(pname, f"{today:%d %b %Y}", ind["score"], BAND_T[ind["label"]][0][0],
+                          MOON_HOUSE_T[ind["house"]][0])
+        msg = (f"My Dishara energy today: {ind['score']}/100 ({BAND_T[ind['label']][0][0]}). "
+               f"Check yours free: {APP_URL}")
+    else:
+        img = profile_card(pname, profile_lines(chart, cur, now))
+        msg = f"I just explored my Vedic birth chart on Dishara. Try yours free: {APP_URL}"
+    png = to_png(img)
+    st.image(png, width=340)
+    c1, c2 = st.columns(2)
+    c1.download_button(t("share_download"), data=png, file_name=f"dishara-{kind}.png",
+                       mime="image/png", type="primary", use_container_width=True)
+    c2.markdown(f"<a href='https://wa.me/?text={urllib.parse.quote(msg)}' target='_blank' "
+                f"style='display:block;text-align:center;background:#25D366;color:#ffffff;border-radius:999px;"
+                f"padding:0.5rem 1rem;text-decoration:none;font-weight:500'>{t('share_whatsapp')}</a>",
+                unsafe_allow_html=True)
+    st.caption(t("share_hint"))
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
@@ -1799,7 +2087,8 @@ with home:
                 unsafe_allow_html=True)
     if chart["time_unknown"]:
         st.caption(t("moon_chart_caption"))
-
+panchang_section(profile, now)
+share_section(chart, pname, cur, ind, today, now)
 # ----- ASK DISHARA -----
 with chat:
     convs = list_conversations(uid, pid)
