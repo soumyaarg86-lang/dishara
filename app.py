@@ -1,15 +1,16 @@
 import os
+import io
+import json
+import math
 import time
 import html
-import io
-import math
 import urllib.parse
-import requests
-from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime, date, timedelta, timezone
 
+import requests
 import streamlit as st
 import swisseph as swe
+from PIL import Image, ImageDraw, ImageFont, features
 from geopy.geocoders import Photon, Nominatim
 from google import genai
 from google.genai import types, errors
@@ -18,6 +19,7 @@ from supabase import create_client
 st.set_page_config(page_title="Dishara", page_icon="🌅", layout="centered")
 
 FEEDBACK_URL = "https://forms.gle/paste-your-link-here"
+APP_URL = "https://dishara.streamlit.app"
 RELATIONS = ["Self", "Spouse / Partner", "Mother", "Father", "Son", "Daughter",
              "Sibling", "Friend", "Other"]
 CHART_VERSION = 4
@@ -35,6 +37,9 @@ def L():
 def pick(tup):
     return tup[LI[L()]]
 
+def pl(tup, lang):
+    return tup[LI[lang]]
+
 T = {
     "tagline": ("Your stars, your direction.<br>Every night ends in a sunrise.",
                 "आपके सितारे, आपकी दिशा।<br>हर रात के बाद सवेरा होता है।",
@@ -50,6 +55,12 @@ T = {
     "email_hint": ("Your browser can remember your email for next time. To use a different one, just type it in.",
                    "आपका ब्राउज़र अगली बार के लिए आपका ईमेल याद रख सकता है। दूसरा ईमेल इस्तेमाल करने के लिए बस उसे टाइप करें।",
                    "আপনার ব্রাউজার পরের বারের জন্য আপনার ইমেল মনে রাখতে পারে। অন্য ইমেল ব্যবহার করতে শুধু সেটি টাইপ করুন।"),
+    "autofill": ("Your browser filled in the boxes, but the app didn't receive them. Please click inside the Email "
+                 "and Password boxes (or press Tab through them), then click Sign in again.",
+                 "आपके ब्राउज़र ने बॉक्स भर दिए, लेकिन ऐप तक जानकारी नहीं पहुँची। कृपया ईमेल और पासवर्ड बॉक्स में एक बार "
+                 "क्लिक करें (या Tab दबाएँ), फिर दोबारा साइन इन दबाएँ।",
+                 "আপনার ব্রাউজার বাক্সগুলি পূরণ করেছে, কিন্তু অ্যাপ তথ্যটি পায়নি। অনুগ্রহ করে ইমেল ও পাসওয়ার্ড বাক্সে একবার "
+                 "ক্লিক করুন (বা Tab চাপুন), তারপর আবার সাইন ইন চাপুন।"),
     "signin_failed": ("Couldn't sign in. Check your email and password.",
                       "साइन इन नहीं हो सका। अपना ईमेल और पासवर्ड जाँचें।",
                       "সাইন ইন করা যায়নি। আপনার ইমেল ও পাসওয়ার্ড দেখুন।"),
@@ -89,9 +100,12 @@ T = {
     "place_label": ("Birth place: type the town or city and press Enter",
                     "जन्म स्थान: शहर या कस्बे का नाम अंग्रेज़ी में लिखें और Enter दबाएँ",
                     "জন্মস্থান: শহর বা নগরের নাম ইংরেজিতে লিখে Enter চাপুন"),
+    "city_label": ("City: type the town or city and press Enter",
+                   "शहर: नाम अंग्रेज़ी में लिखें और Enter दबाएँ",
+                   "শহর: নাম ইংরেজিতে লিখে Enter চাপুন"),
     "place_ph": ("e.g. Mysuru", "जैसे Varanasi", "যেমন Kolkata"),
     "finding_places": ("Finding places...", "स्थान खोजे जा रहे हैं...", "স্থান খোঁজা হচ্ছে..."),
-    "select_place": ("Select the birth place", "जन्म स्थान चुनें", "জন্মস্থান বেছে নিন"),
+    "select_place": ("Select the place", "स्थान चुनें", "স্থান বেছে নিন"),
     "choose_place": ("Choose the correct place", "सही स्थान चुनें", "সঠিক স্থানটি বেছে নিন"),
     "no_match": ("No match found. Check the spelling, or try the nearest bigger town.",
                  "कोई स्थान नहीं मिला। वर्तनी जाँचें, या पास का बड़ा शहर आज़माएँ।",
@@ -116,6 +130,7 @@ T = {
     "tab_ask": ("Ask Dishara", "दिशारा से पूछें", "দিশারাকে জিজ্ঞাসা"),
     "tab_kundali": ("Kundali", "कुंडली", "কুণ্ডলী"),
     "tab_match": ("Match Making", "कुंडली मिलान", "কোষ্ঠী মিলন"),
+    "tab_share": ("Share", "शेयर", "শেয়ার"),
     "todays_energy": ("Today's energy · {date}", "आज की ऊर्जा · {date}", "আজকের শক্তি · {date}"),
     "why_score": ("Why: the Moon is in {nak}, giving {name} a {tara} tara ({tara_word}). It's in the {ch} sign "
                   "from the natal Moon ({ch_word}) and the {house} house of the chart.",
@@ -170,6 +185,66 @@ T = {
     "moon_chart_caption": ("Reading from the Moon chart, since the birth time is unknown.",
                            "जन्म समय अज्ञात होने के कारण चंद्र कुंडली से पढ़ा जा रहा है।",
                            "জন্মসময় অজানা, তাই চন্দ্র কুণ্ডলী থেকে পড়া হচ্ছে।"),
+    "pan_title": ("Today's Panchang", "आज का पंचांग", "আজকের পঞ্চাঙ্গ"),
+    "pan_change": ("Change city", "शहर बदलें", "শহর বদলান"),
+    "pan_for": ("For {place}", "स्थान: {place}", "স্থান: {place}"),
+    "pan_sunrise": ("Sunrise", "सूर्योदय", "সূর্যোদয়"),
+    "pan_sunset": ("Sunset", "सूर्यास्त", "সূর্যাস্ত"),
+    "pan_vara": ("Day", "वार", "বার"),
+    "pan_tithi": ("Tithi", "तिथि", "তিথি"),
+    "pan_yoga": ("Yoga", "योग", "যোগ"),
+    "pan_karana": ("Karana", "करण", "করণ"),
+    "pan_times": ("Key timings today", "आज के मुख्य समय", "আজকের গুরুত্বপূর্ণ সময়"),
+    "pan_rahu": ("Rahu Kaal", "राहु काल", "রাহু কাল"),
+    "pan_rahu_note": ("Traditionally avoided for new starts and important beginnings.",
+                      "परंपरागत रूप से नई शुरुआत और महत्वपूर्ण कार्यों के लिए टाला जाता है।",
+                      "ঐতিহ্যগতভাবে নতুন শুরু ও গুরুত্বপূর্ণ কাজের জন্য এড়ানো হয়।"),
+    "pan_rahu_now": ("Rahu Kaal is on now, until {end}.", "अभी राहु काल चल रहा है, {end} तक।",
+                     "এখন রাহু কাল চলছে, {end} পর্যন্ত।"),
+    "pan_yama": ("Yamaganda", "यमगंड", "যমগণ্ড"),
+    "pan_gulika": ("Gulika Kaal", "गुलिक काल", "গুলিক কাল"),
+    "pan_abhijit": ("Abhijit Muhurta", "अभिजित मुहूर्त", "অভিজিৎ মুহূর্ত"),
+    "pan_abhijit_note": ("Traditionally auspicious for important work.",
+                         "परंपरागत रूप से महत्वपूर्ण कार्यों के लिए शुभ।",
+                         "ঐতিহ্যগতভাবে গুরুত্বপূর্ণ কাজের জন্য শুভ।"),
+    "pan_abhijit_wed": ("(traditionally not used on Wednesdays)", "(बुधवार को परंपरागत रूप से नहीं लिया जाता)",
+                        "(বুধবারে ঐতিহ্যগতভাবে ব্যবহৃত হয় না)"),
+    "pan_note": ("Tithi, nakshatra, yoga and karana are shown as at sunrise, following tradition. Timings are for "
+                 "the selected city; the birth place is used by default.",
+                 "परंपरा के अनुसार तिथि, नक्षत्र, योग और करण सूर्योदय के समय के दिखाए गए हैं। समय चुने गए शहर के अनुसार "
+                 "हैं; डिफ़ॉल्ट रूप से जन्म स्थान लिया जाता है।",
+                 "ঐতিহ্য অনুযায়ী তিথি, নক্ষত্র, যোগ ও করণ সূর্যোদয়ের সময়ের দেখানো হয়েছে। সময়গুলি বেছে নেওয়া শহরের "
+                 "জন্য; ডিফল্টভাবে জন্মস্থান ব্যবহৃত হয়।"),
+    "pan_error": ("Panchang couldn't be calculated right now.", "पंचांग अभी गणना नहीं हो सका।",
+                  "পঞ্চাঙ্গ এখন গণনা করা যায়নি।"),
+    "sh_title": ("Share a card", "कार्ड शेयर करें", "কার্ড শেয়ার করুন"),
+    "sh_sub": ("New messages every morning. Cards never show birth details.",
+               "हर सुबह नए संदेश। कार्ड पर कभी जन्म विवरण नहीं दिखते।",
+               "প্রতিদিন সকালে নতুন বার্তা। কার্ডে কখনো জন্মের তথ্য দেখানো হয় না।"),
+    "k_my_rashi": ("My Rashi", "मेरी राशि", "আমার রাশি"),
+    "k_my_nak": ("My nakshatra", "मेरा नक्षत्र", "আমার নক্ষত্র"),
+    "k_today_me": ("Today for me", "आज मेरे लिए", "আজ আমার জন্য"),
+    "k_guide": ("Rashi guide", "राशि मार्गदर्शन", "রাশি নির্দেশিকা"),
+    "k_thought": ("Thought of the day", "आज का विचार", "আজকের ভাবনা"),
+    "k_festival": ("Festival wish", "त्योहार की शुभकामना", "উৎসবের শুভেচ্ছা"),
+    "sh_lang": ("Card language", "कार्ड की भाषा", "কার্ডের ভাষা"),
+    "sh_fest": ("Festival", "त्योहार", "উৎসব"),
+    "sh_another": ("Show another", "दूसरा दिखाएँ", "আরেকটি দেখুন"),
+    "sh_name": ("Add your name (optional)", "अपना नाम जोड़ें (वैकल्पिक)", "আপনার নাম যোগ করুন (ঐচ্ছিক)"),
+    "sh_download": ("Download card", "कार्ड डाउनलोड करें", "কার্ড ডাউনলোড করুন"),
+    "sh_whatsapp": ("Share on WhatsApp", "WhatsApp पर शेयर करें", "WhatsApp-এ শেয়ার করুন"),
+    "sh_hint": ("Download the card, then attach it in WhatsApp or Instagram.",
+                "कार्ड डाउनलोड करें, फिर उसे WhatsApp या Instagram में जोड़ें।",
+                "কার্ডটি ডাউনলোড করে WhatsApp বা Instagram-এ যুক্ত করুন।"),
+    "sh_fresh": ("Today's fresh messages are being prepared. Refresh in a minute to see them.",
+                 "आज के नए संदेश तैयार हो रहे हैं। देखने के लिए एक मिनट बाद रिफ्रेश करें।",
+                 "আজকের নতুন বার্তা তৈরি হচ্ছে। দেখতে এক মিনিট পরে রিফ্রেশ করুন।"),
+    "sh_lang_off": ("Hindi and Bengali cards need fonts that aren't available right now, so this card is in English.",
+                    "हिंदी और बांग्ला कार्ड के लिए ज़रूरी फ़ॉन्ट अभी उपलब्ध नहीं हैं, इसलिए यह कार्ड अंग्रेज़ी में है।",
+                    "হিন্দি ও বাংলা কার্ডের জন্য প্রয়োজনীয় ফন্ট এখন পাওয়া যাচ্ছে না, তাই এই কার্ডটি ইংরেজিতে।"),
+    "sh_wa_msg": ("Made with Dishara. Get your free daily guide: {url}",
+                  "दिशारा से बनाया गया। अपना मुफ़्त दैनिक मार्गदर्शन पाएँ: {url}",
+                  "দিশারা দিয়ে তৈরি। আপনার বিনামূল্যে দৈনিক নির্দেশিকা পান: {url}"),
     "new_conv": ("New conversation", "नई बातचीत", "নতুন কথোপকথন"),
     "past_conv": ("Open a past conversation ({n})", "पिछली बातचीत खोलें ({n})", "আগের কথোপকথন খুলুন ({n})"),
     "ask_intro": ("Ask anything about {name}'s chart: career, relationships, timing, strengths...",
@@ -290,49 +365,6 @@ T = {
                 "আমি একটু বিশ্রাম নিচ্ছি। অনুগ্রহ করে এক মিনিট পরে আবার জিজ্ঞাসা করুন।"),
 }
 
-T.update({
-    "pan_title": ("Today's Panchang", "आज का पंचांग", "আজকের পঞ্চাঙ্গ"),
-    "pan_change": ("Change city", "शहर बदलें", "শহর বদলান"),
-    "pan_for": ("For {place}", "स्थान: {place}", "স্থান: {place}"),
-    "pan_sunrise": ("Sunrise", "सूर्योदय", "সূর্যোদয়"),
-    "pan_sunset": ("Sunset", "सूर्यास्त", "সূর্যাস্ত"),
-    "pan_vara": ("Day", "वार", "বার"),
-    "pan_tithi": ("Tithi", "तिथि", "তিথি"),
-    "pan_yoga": ("Yoga", "योग", "যোগ"),
-    "pan_karana": ("Karana", "करण", "করণ"),
-    "pan_times": ("Key timings today", "आज के मुख्य समय", "আজকের গুরুত্বপূর্ণ সময়"),
-    "pan_rahu": ("Rahu Kaal", "राहु काल", "রাহু কাল"),
-    "pan_rahu_note": ("Traditionally avoided for new starts and important beginnings.",
-                      "परंपरागत रूप से नई शुरुआत और महत्वपूर्ण कार्यों के लिए टाला जाता है।",
-                      "ঐতিহ্যগতভাবে নতুন শুরু ও গুরুত্বপূর্ণ কাজের জন্য এড়ানো হয়।"),
-    "pan_rahu_now": ("Rahu Kaal is on now, until {end}.", "अभी राहु काल चल रहा है, {end} तक।",
-                     "এখন রাহু কাল চলছে, {end} পর্যন্ত।"),
-    "pan_yama": ("Yamaganda", "यमगंड", "যমগণ্ড"),
-    "pan_gulika": ("Gulika Kaal", "गुलिक काल", "গুলিক কাল"),
-    "pan_abhijit": ("Abhijit Muhurta", "अभिजित मुहूर्त", "অভিজিৎ মুহূর্ত"),
-    "pan_abhijit_note": ("Traditionally auspicious for important work.",
-                         "परंपरागत रूप से महत्वपूर्ण कार्यों के लिए शुभ।",
-                         "ঐতিহ্যগতভাবে গুরুত্বপূর্ণ কাজের জন্য শুভ।"),
-    "pan_abhijit_wed": ("(traditionally not used on Wednesdays)", "(बुधवार को परंपरागत रूप से नहीं लिया जाता)",
-                        "(বুধবারে ঐতিহ্যগতভাবে ব্যবহৃত হয় না)"),
-    "pan_note": ("Tithi, nakshatra, yoga and karana are shown as at sunrise, following tradition. Timings are for "
-                 "the selected city; the birth place is used by default.",
-                 "परंपरा के अनुसार तिथि, नक्षत्र, योग और करण सूर्योदय के समय के दिखाए गए हैं। समय चुने गए शहर के अनुसार "
-                 "हैं; डिफ़ॉल्ट रूप से जन्म स्थान लिया जाता है।",
-                 "ঐতিহ্য অনুযায়ী তিথি, নক্ষত্র, যোগ ও করণ সূর্যোদয়ের সময়ের দেখানো হয়েছে। সময়গুলি বেছে নেওয়া শহরের "
-                 "জন্য; ডিফল্টভাবে জন্মস্থান ব্যবহৃত হয়।"),
-    "pan_error": ("Panchang couldn't be calculated right now.", "पंचांग अभी गणना नहीं हो सका।",
-                  "পঞ্চাঙ্গ এখন গণনা করা যায়নি।"),
-    "share_title": ("Share your Dishara card", "अपना दिशारा कार्ड शेयर करें", "আপনার দিশারা কার্ড শেয়ার করুন"),
-    "share_pick": ("Card", "कार्ड", "কার্ড"),
-    "share_energy": ("Today's energy", "आज की ऊर्जा", "আজকের শক্তি"),
-    "share_profile": ("My chart", "मेरी कुंडली", "আমার কুণ্ডলী"),
-    "share_download": ("Download card", "कार्ड डाउनलोड करें", "কার্ড ডাউনলোড করুন"),
-    "share_whatsapp": ("Share on WhatsApp", "WhatsApp पर शेयर करें", "WhatsApp-এ শেয়ার করুন"),
-    "share_hint": ("Download the card, then attach it in WhatsApp or Instagram. Card text is in English for now.",
-                   "कार्ड डाउनलोड करें, फिर उसे WhatsApp या Instagram में जोड़ें। कार्ड का टेक्स्ट अभी अंग्रेज़ी में है।",
-                   "কার্ডটি ডাউনলোড করে WhatsApp বা Instagram-এ যুক্ত করুন। কার্ডের লেখা আপাতত ইংরেজিতে।"),
-})  
 def t(key, **kw):
     s = pick(T[key])
     return s.format(**kw) if kw else s
@@ -488,8 +520,8 @@ h1, h2, h3, h4 {font-family:'Cormorant Garamond','Noto Serif Devanagari','Noto S
 .big {font-size:17px; font-weight:500; margin:4px 0;}
 .bar {height:6px; background:#534AB7; border-radius:3px; margin-top:8px;}
 .bar > div {height:6px; background:#FAC775; border-radius:3px;}
-.stButton > button {background:#EF9F27; color:#412402; border:none; border-radius:999px; font-weight:500; padding:0.45rem 1.4rem;}
-.stButton > button:hover {background:#FAC775; color:#412402;}
+.stButton > button, .stFormSubmitButton > button, .stDownloadButton > button {background:#EF9F27; color:#412402; border:none; border-radius:999px; font-weight:500; padding:0.45rem 1.4rem;}
+.stButton > button:hover, .stFormSubmitButton > button:hover, .stDownloadButton > button:hover {background:#FAC775; color:#412402;}
 .stTabs [aria-selected="true"] {color:#FAC775 !important;}
 </style>""", unsafe_allow_html=True)
 
@@ -499,7 +531,7 @@ SMALL_SUFFIX = "font-size:15px;color:#AFA9EC"
 # ---------------- PRIVACY POLICY PAGE (dishara.streamlit.app/?page=privacy) ----------------
 PRIVACY_POLICY = """
 # Dishara Privacy Policy
-*Last updated: 5 November 2026*
+*Last updated: 6 November 2026*
 
 Dishara ("we") is a Vedic astrology guidance app. This policy explains what we collect and how we use it.
 
@@ -517,6 +549,10 @@ Dishara ("we") is a Vedic astrology guidance app. This policy explains what we c
 Answers are generated by Google's Gemini AI. To create an answer, your question and the relevant chart
 details are sent to Google. During our beta we use Gemini's free tier, under which Google may use this
 content to improve its products. Please don't include sensitive personal information you don't want shared.
+
+**Shareable cards**
+Cards you create show only your name (if you add it), your Moon sign or nakshatra, and general daily
+messages. They never show your birth date, time or place.
 
 **Where data is stored**
 Your data is stored with Supabase (database) and the app is hosted on Streamlit Community Cloud.
@@ -548,11 +584,9 @@ def secret(name):
 
 @st.cache_resource
 def db():
-    # Server-side database client (secret key never reaches the browser)
     return create_client(secret("SUPABASE_URL"), secret("SUPABASE_SERVICE_KEY"))
 
 def auth_client():
-    # Separate client using the public key, only for sign-in; one per visitor
     if "sb_auth" not in st.session_state:
         st.session_state.sb_auth = create_client(secret("SUPABASE_URL"), secret("SUPABASE_KEY"))
     return st.session_state.sb_auth
@@ -607,6 +641,21 @@ def save_tip(uid, pid, day, lang, content):
         db().table("daily_tips").upsert({"user_id": uid, "profile_id": pid, "day": day.isoformat(),
                                          "lang": lang, "content": content},
                                         on_conflict="profile_id,day,lang").execute()
+    except Exception:
+        pass
+
+def get_daily_cards(day_iso, lang):
+    try:
+        rows = (db().table("daily_cards").select("content").eq("day", day_iso).eq("lang", lang)
+                .limit(1).execute().data)
+        return rows[0]["content"] if rows else None
+    except Exception:
+        return None
+
+def save_daily_cards(day_iso, lang, content):
+    try:
+        db().table("daily_cards").upsert({"day": day_iso, "lang": lang, "content": content},
+                                         on_conflict="day,lang").execute()
     except Exception:
         pass
 
@@ -845,12 +894,12 @@ def ashtakavarga(chart):
     ref_signs = {r: chart["planets"][r]["sign"] for r in SEVEN}
     ref_signs["Lagna"] = chart["asc_sign"]
     bav = {}
-    for pl, refs in BAV_RULES.items():
+    for pl_, refs in BAV_RULES.items():
         row = [0] * 12
         for ref, houses in refs.items():
             for h in houses:
                 row[(ref_signs[ref] + h - 1) % 12] += 1
-        bav[pl] = row
+        bav[pl_] = row
     sav = [sum(bav[p][s] for p in bav) for s in range(12)]
     return {"bav": bav, "sav": sav}
 
@@ -904,7 +953,7 @@ def neecha_bhanga(chart):
         if p["dignity"] != "debilitated":
             continue
         deb = p["sign"]
-        helpers = [SIGN_LORDS[deb]] + [pl for pl, ex in EXALT.items() if ex == deb]
+        helpers = [SIGN_LORDS[deb]] + [pl_ for pl_, ex in EXALT.items() if ex == deb]
         for hp in helpers:
             hs = P[hp]["sign"]
             if (hs - chart["asc_sign"]) % 3 == 0 or (hs - moon_sign) % 3 == 0:
@@ -1004,11 +1053,11 @@ def find_yogas(chart):
             kind, meaning = "Maha", "strong mutual support between these life areas"
         ys.append(f"{kind} Parivartana yoga ({a} and {b} exchange signs, houses {ha} and {hb}): {meaning}")
     if known:
-        for pl, yn in {"Mars": "Ruchaka", "Mercury": "Bhadra", "Jupiter": "Hamsa",
-                       "Venus": "Malavya", "Saturn": "Sasa"}.items():
-            p = P[pl]
+        for pl_, yn in {"Mars": "Ruchaka", "Mercury": "Bhadra", "Jupiter": "Hamsa",
+                        "Venus": "Malavya", "Saturn": "Sasa"}.items():
+            p = P[pl_]
             if p["house"] in (1, 4, 7, 10) and p["dignity"] in ("exalted", "own sign"):
-                ys.append(f"{yn} Mahapurusha yoga ({pl} {p['dignity']} in a kendra)")
+                ys.append(f"{yn} Mahapurusha yoga ({pl_} {p['dignity']} in a kendra)")
         kendra = {lord_of(chart, h) for h in (1, 4, 7, 10)}
         trikona = {lord_of(chart, h) for h in (1, 5, 9)}
         pairs = set()
@@ -1070,18 +1119,18 @@ def influences(planet, from_sign, target_sign):
 
 def double_transit_windows(chart, now, house):
     target = (chart["asc_sign"] + house - 1) % 12
-    windows, cur = [], None
+    windows, cur_w = [], None
     for d, js, ss in transit_months(chart, now):
         on = influences("Jupiter", js, target) and influences("Saturn", ss, target)
-        if on and cur is None:
-            cur = [d, d]
+        if on and cur_w is None:
+            cur_w = [d, d]
         elif on:
-            cur[1] = d
-        elif cur:
-            windows.append(tuple(cur))
-            cur = None
-    if cur:
-        windows.append(tuple(cur))
+            cur_w[1] = d
+        elif cur_w:
+            windows.append(tuple(cur_w))
+            cur_w = None
+    if cur_w:
+        windows.append(tuple(cur_w))
     return windows
 
 def fmt_windows(windows):
@@ -1171,18 +1220,18 @@ def area_analysis(chart, key, now):
     challenging = [t_ for v, t_ in sorted(factors, key=lambda f: f[0]) if v < 0][:3]
     houses_set = set(A["houses"])
 
-    def link(pl):
+    def link(pl_):
         why = []
-        if pl not in ("Rahu", "Ketu"):
-            owned = [h for h in A["houses"] if lord_of(chart, h) == pl]
+        if pl_ not in ("Rahu", "Ketu"):
+            owned = [h for h in A["houses"] if lord_of(chart, h) == pl_]
             if owned:
                 why.append(f"rules house {', '.join(map(str, owned))}")
-        if P[pl]["house"] in houses_set:
-            why.append(f"sits in house {P[pl]['house']}")
-        asp_h = [h for h in A["houses"] if pl in asp[h]]
+        if P[pl_]["house"] in houses_set:
+            why.append(f"sits in house {P[pl_]['house']}")
+        asp_h = [h for h in A["houses"] if pl_ in asp[h]]
         if asp_h:
             why.append(f"aspects house {', '.join(map(str, asp_h))}")
-        if pl in A["karakas"]:
+        if pl_ in A["karakas"]:
             why.append("is a natural significator")
         return why
 
@@ -1253,8 +1302,8 @@ def chart_text(chart, now):
         lines.append(f"Lagna: {SIGNS[chart['asc_sign']]} {chart['asc'] % 30:.1f}°. Divisional Lagnas: {vl}")
     roles = chart["roles"]
     groups = {}
-    for pl in SEVEN:
-        groups.setdefault(roles[pl], []).append(pl)
+    for pl_ in SEVEN:
+        groups.setdefault(roles[pl_], []).append(pl_)
     lines.append("\nFUNCTIONAL NATURE FOR THIS LAGNA: " +
                  "; ".join(f"{k}: {', '.join(v)}" for k, v in groups.items()))
     rules = lordships(chart)
@@ -1522,11 +1571,16 @@ def get_models():
     order = {"gemini-flash-latest": 0, "gemini-flash-lite-latest": 1}
     return sorted(models, key=lambda m: order.get(m, 2))
 
-def ask_dishara(prompt, chart_name, rel):
+def ask_dishara(prompt, chart_name, rel, fast=False):
     client = get_client()
     lang = ANSWER_LANG[L()]
-    for model in get_models()[:6]:
-        for attempt in range(2):
+    models = get_models()
+    if fast:
+        models = sorted(models, key=lambda m: 0 if m == "gemini-flash-lite-latest" else 1)[:3]
+    else:
+        models = models[:6]
+    for model in models:
+        for attempt in range(1 if fast else 2):
             try:
                 r = client.models.generate_content(
                     model=model, contents=prompt,
@@ -1534,10 +1588,28 @@ def ask_dishara(prompt, chart_name, rel):
                         system_instruction=system_prompt(lang, chart_name, rel), temperature=0.4))
                 return r.text
             except errors.ServerError:
-                time.sleep(2 * (attempt + 1))
+                if not fast:
+                    time.sleep(2 * (attempt + 1))
             except errors.ClientError:
                 break
     return None
+
+def ai_json(prompt):
+    client = get_client()
+    models = sorted(get_models(), key=lambda m: {"gemini-flash-latest": 0,
+                                                 "gemini-flash-lite-latest": 1}.get(m, 2))[:3]
+    for model in models:
+        try:
+            r = client.models.generate_content(
+                model=model, contents=prompt,
+                config=types.GenerateContentConfig(temperature=0.8, response_mime_type="application/json"))
+            data = json.loads(r.text)
+            if isinstance(data, dict):
+                return data
+        except Exception:
+            continue
+    return None
+
 # ---------------- PANCHANG ----------------
 TITHI_T = [("Pratipada", "प्रतिपदा", "প্রতিপদ"), ("Dwitiya", "द्वितीया", "দ্বিতীয়া"), ("Tritiya", "तृतीया", "তৃতীয়া"),
            ("Chaturthi", "चतुर्थी", "চতুর্থী"), ("Panchami", "पंचमी", "পঞ্চমী"), ("Shashthi", "षष्ठी", "ষষ্ঠী"),
@@ -1563,7 +1635,6 @@ KARANA_T = [("Bava", "बव", "বব"), ("Balava", "बालव", "বাল�
             ("Taitila", "तैतिल", "তৈতিল"), ("Gara", "गर", "গর"), ("Vanija", "वणिज", "বণিজ"),
             ("Vishti (Bhadra)", "विष्टि (भद्रा)", "বিষ্টি (ভদ্রা)"), ("Shakuni", "शकुनि", "শকুনি"),
             ("Chatushpada", "चतुष्पद", "চতুষ্পদ"), ("Naga", "नाग", "নাগ"), ("Kimstughna", "किंस्तुघ्न", "কিংস্তুঘ্ন")]
-# Which eighth of the daytime each period falls in, by weekday (Monday = 0)
 RAHU_PART = {0: 2, 1: 7, 2: 5, 3: 6, 4: 4, 5: 3, 6: 8}
 YAMA_PART = {0: 4, 1: 3, 2: 2, 3: 1, 4: 7, 5: 6, 6: 5}
 GULIKA_PART = {0: 6, 1: 5, 2: 4, 3: 3, 4: 2, 5: 1, 6: 7}
@@ -1575,7 +1646,7 @@ def jd_to_ist(jd):
 @st.cache_data(ttl=3600, show_spinner=False)
 def panchang(day_iso, lat, lon):
     day = date.fromisoformat(day_iso)
-    start = datetime.combine(day, datetime.min.time()) - timedelta(hours=IST)   # local midnight, in UTC
+    start = datetime.combine(day, datetime.min.time()) - timedelta(hours=IST)
     jd0 = julian_day(start)
     geopos = (lon, lat, 0.0)
     _, rise = swe.rise_trans(jd0, swe.SUN, swe.CALC_RISE, geopos, 0.0, 0.0, swe.FLG_MOSEPH)
@@ -1611,7 +1682,7 @@ def panchang_section(profile, now):
     st.markdown(f"#### {t('pan_title')}")
     default = (profile["place"], profile["lat"], profile["lon"])
     with st.expander(t("pan_change")):
-        q = st.text_input(t("place_label"), key="pan_q", placeholder=t("place_ph"))
+        q = st.text_input(t("city_label"), key="pan_q", placeholder=t("place_ph"))
         if len(q.strip()) >= 3:
             opts = search_places(q.strip())
             if opts:
@@ -1657,128 +1728,507 @@ def panchang_section(profile, now):
       <p class="muted">{t('pan_abhijit_note')}</p></div>""", unsafe_allow_html=True)
     st.caption(t("pan_note"))
 
-# ---------------- SHAREABLE CARDS ----------------
-APP_URL = "https://dishara.streamlit.app"
-CW, CH = 1080, 1350
-C_BG, C_GOLD, C_ORANGE = (38, 33, 92), (250, 199, 117), (239, 159, 39)
-C_LAV, C_MUTED, C_WHITE, C_LINE = (206, 203, 246), (175, 169, 236), (238, 237, 254), (127, 119, 221)
-FONT_URLS = {"regular": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf",
-             "bold": "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-SemiBold.ttf"}
+# ---------------- SHAREABLE CARDS: CONTENT ----------------
+CARD_T = {
+    "wordmark": ("Dishara", "दिशारा", "দিশারা"),
+    "my_moon": ("My Moon sign", "मेरी चंद्र राशि", "আমার চন্দ্র রাশি"),
+    "my_nak": ("My nakshatra", "मेरा नक्षत्र", "আমার নক্ষত্র"),
+    "ruled": ("Ruled by {p}", "स्वामी: {p}", "অধিপতি: {p}"),
+    "today_for": ("Today for {s} Moon", "{s} राशि के लिए आज", "{s} রাশির জন্য আজ"),
+    "guide": ("Today's Rashi guide", "आज का राशि मार्गदर्शन", "আজকের রাশি নির্দেশিকা"),
+    "thought": ("Thought for today", "आज का विचार", "আজকের ভাবনা"),
+    "moon_in": ("Moon in {n}", "चंद्रमा {n} में", "চন্দ্র {n} নক্ষত্রে"),
+    "from": ("From {n}", "{n} की ओर से", "{n}-এর পক্ষ থেকে"),
+    "with_love": ("With love, {n}", "स्नेह सहित, {n}", "ভালোবাসা সহ, {n}"),
+    "cta_rashi": ("find your Rashi", "अपनी राशि जानें", "আপনার রাশি জানুন"),
+    "cta_nak": ("find your nakshatra", "अपना नक्षत्र जानें", "আপনার নক্ষত্র জানুন"),
+    "cta_day": ("your daily guide", "आपका दैनिक मार्गदर्शक", "আপনার দৈনিক পথপ্রদর্শক"),
+    "nak_fallback": ("Today, let your {t} nature lead the way.", "आज अपने {t} स्वभाव को राह दिखाने दें।",
+                     "আজ আপনার {t} স্বভাবকে পথ দেখাতে দিন।"),
+}
+EN_WD = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+EN_MON = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+          "October", "November", "December"]
+MON_HI = ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"]
+MON_BN = ["জানুয়ারি", "ফেব্রুয়ারি", "মার্চ", "এপ্রিল", "মে", "জুন", "জুলাই", "আগস্ট", "সেপ্টেম্বর", "অক্টোবর",
+          "নভেম্বর", "ডিসেম্বর"]
+RASHI_TRAITS = [
+    ("Bold · Energetic · Pioneering", "साहसी · ऊर्जावान · अग्रणी", "সাহসী · উদ্যমী · অগ্রণী"),
+    ("Steady · Loyal · Graceful", "स्थिर · वफ़ादार · सौम्य", "স্থির · বিশ্বস্ত · মার্জিত"),
+    ("Curious · Witty · Versatile", "जिज्ञासु · हाज़िरजवाब · बहुमुखी", "কৌতূহলী · রসিক · বহুমুখী"),
+    ("Caring · Intuitive · Protective", "स्नेही · सहज ज्ञानी · रक्षक", "যত্নশীল · অন্তর্দৃষ্টিসম্পন্ন · রক্ষাকর্তা"),
+    ("Generous · Confident · Warm", "उदार · आत्मविश्वासी · गर्मजोश", "উদার · আত্মবিশ্বাসী · উষ্ণ"),
+    ("Thoughtful · Precise · Helpful", "विचारशील · सटीक · मददगार", "চিন্তাশীল · নিখুঁত · সহায়ক"),
+    ("Balanced · Charming · Fair", "संतुलित · आकर्षक · न्यायप्रिय", "ভারসাম্যপূর্ণ · মনোমুগ্ধকর · ন্যায়পরায়ণ"),
+    ("Deep · Determined · Loyal", "गहरे · दृढ़ · वफ़ादार", "গভীর · দৃঢ়প্রতিজ্ঞ · বিশ্বস্ত"),
+    ("Optimistic · Wise · Adventurous", "आशावादी · ज्ञानी · साहसिक", "আশাবাদী · জ্ঞানী · অভিযাত্রী"),
+    ("Disciplined · Patient · Reliable", "अनुशासित · धैर्यवान · भरोसेमंद", "শৃঙ্খলাপরায়ণ · ধৈর্যশীল · নির্ভরযোগ্য"),
+    ("Original · Kind · Visionary", "मौलिक · दयालु · दूरदर्शी", "মৌলিক · দয়ালু · দূরদর্শী"),
+    ("Compassionate · Creative · Dreamy", "करुणामय · रचनात्मक · स्वप्नशील", "সহানুভূতিশীল · সৃজনশীল · স্বপ্নময়"),
+]
+NAK_TRAITS = [
+    ("Swift · Healing · Bold", "तेज़ · उपचारक · साहसी", "দ্রুত · নিরাময়কারী · সাহসী"),
+    ("Creative · Strong · Responsible", "रचनात्मक · दृढ़ · ज़िम्मेदार", "সৃজনশীল · দৃঢ় · দায়িত্বশীল"),
+    ("Sharp · Honest · Determined", "तीक्ष्ण · ईमानदार · दृढ़", "তীক্ষ্ণ · সৎ · দৃঢ়প্রতিজ্ঞ"),
+    ("Creative · Charming · Steady", "रचनात्मक · आकर्षक · स्थिर", "সৃজনশীল · মনোমুগ্ধকর · স্থির"),
+    ("Curious · Gentle · Seeking", "जिज्ञासु · कोमल · खोजी", "কৌতূহলী · কোমল · অনুসন্ধানী"),
+    ("Intense · Insightful · Renewing", "गहन · अंतर्दृष्टिपूर्ण · नवीनकारी", "তীব্র · অন্তর্দৃষ্টিসম্পন্ন · নবায়নকারী"),
+    ("Hopeful · Kind · Resilient", "आशावान · दयालु · लचीले", "আশাবাদী · দয়ালু · অদম্য"),
+    ("Nurturing · Wise · Generous", "पोषक · ज्ञानी · उदार", "লালনকারী · জ্ঞানী · উদার"),
+    ("Perceptive · Magnetic · Clever", "पारखी · आकर्षक · चतुर", "বিচক্ষণ · আকর্ষণীয় · চতুর"),
+    ("Dignified · Proud · Rooted", "गरिमामय · स्वाभिमानी · परंपरा से जुड़े", "মর্যাদাপূর্ণ · আত্মসম্মানী · শিকড়ে বাঁধা"),
+    ("Joyful · Creative · Loving", "आनंदमय · रचनात्मक · स्नेही", "আনন্দময় · সৃজনশীল · স্নেহময়"),
+    ("Generous · Loyal · Helpful", "उदार · वफ़ादार · मददगार", "উদার · বিশ্বস্ত · সহায়ক"),
+    ("Skilful · Witty · Hardworking", "कुशल · हाज़िरजवाब · मेहनती", "দক্ষ · রসিক · পরিশ্রমী"),
+    ("Artistic · Brilliant · Stylish", "कलात्मक · प्रतिभाशाली · आकर्षक", "শৈল্পিক · মেধাবী · রুচিশীল"),
+    ("Independent · Flexible · Fair", "स्वतंत्र · लचीले · न्यायप्रिय", "স্বাধীন · নমনীয় · ন্যায়পরায়ণ"),
+    ("Focused · Ambitious · Passionate", "केंद्रित · महत्वाकांक्षी · उत्साही", "একাগ্র · উচ্চাকাঙ্ক্ষী · উদ্যমী"),
+    ("Devoted · Friendly · Balanced", "समर्पित · मिलनसार · संतुलित", "নিবেদিত · বন্ধুত্বপূর্ণ · ভারসাম্যপূর্ণ"),
+    ("Protective · Capable · Brave", "रक्षक · सक्षम · बहादुर", "রক্ষাকর্তা · দক্ষ · সাহসী"),
+    ("Truth-seeking · Deep · Fearless", "सत्य-खोजी · गहरे · निडर", "সত্যসন্ধানী · গভীর · নির্ভীক"),
+    ("Inspiring · Confident · Persuasive", "प्रेरक · आत्मविश्वासी · प्रभावशाली", "অনুপ্রেরণাদায়ী · আত্মবিশ্বাসী · প্রভাবশালী"),
+    ("Principled · Steady · Victorious", "सिद्धांतवादी · स्थिर · विजयी", "নীতিবান · স্থির · বিজয়ী"),
+    ("Attentive · Wise · Connected", "सजग · ज्ञानी · जुड़े हुए", "মনোযোগী · জ্ঞানী · সংযুক্ত"),
+    ("Rhythmic · Generous · Ambitious", "लयबद्ध · उदार · महत्वाकांक्षी", "ছন্দময় · উদার · উচ্চাকাঙ্ক্ষী"),
+    ("Healing · Independent · Visionary", "उपचारक · स्वतंत्र · दूरदर्शी", "নিরাময়কারী · স্বাধীন · দূরদর্শী"),
+    ("Idealistic · Intense · Spiritual", "आदर्शवादी · गहन · आध्यात्मिक", "আদর্শবাদী · তীব্র · আধ্যাত্মিক"),
+    ("Calm · Wise · Compassionate", "शांत · ज्ञानी · करुणामय", "শান্ত · জ্ঞানী · সহানুভূতিশীল"),
+    ("Gentle · Caring · Imaginative", "कोमल · स्नेही · कल्पनाशील", "কোমল · যত্নশীল · কল্পনাপ্রবণ"),
+]
+FALLBACK_THOUGHT = [
+    ("Begin gently; steady steps make strong weeks.", "धीरे से शुरुआत करें; स्थिर कदम मज़बूत सप्ताह बनाते हैं।",
+     "ধীরে শুরু করুন; স্থির পদক্ষেপেই সপ্তাহ মজবুত হয়।"),
+    ("Courage is simply doing the next right thing.", "साहस का अर्थ है अगला सही कदम उठाना।",
+     "সাহস মানে পরের সঠিক কাজটি করা।"),
+    ("Speak kindly and listen fully; words build bridges.", "प्रेम से बोलें और ध्यान से सुनें; शब्द पुल बनाते हैं।",
+     "ভালোবেসে বলুন, মন দিয়ে শুনুন; কথাই সেতু গড়ে।"),
+    ("Learn one new thing today; wisdom grows quietly.", "आज कुछ नया सीखें; ज्ञान चुपचाप बढ़ता है।",
+     "আজ নতুন কিছু শিখুন; জ্ঞান নীরবে বাড়ে।"),
+    ("Make room for beauty, music and the people you love.", "सुंदरता, संगीत और अपनों के लिए समय निकालें।",
+     "সৌন্দর্য, সংগীত আর প্রিয়জনদের জন্য সময় রাখুন।"),
+    ("Patient effort today becomes lasting strength tomorrow.", "आज का धैर्यपूर्ण प्रयास कल की स्थायी शक्ति बनता है।",
+     "আজকের ধৈর্যশীল প্রচেষ্টাই কালকের স্থায়ী শক্তি।"),
+    ("Rest, reflect and let your inner light recharge.", "आराम करें, विचार करें और अपनी भीतरी रोशनी को फिर से भरें।",
+     "বিশ্রাম নিন, ভাবুন, আর ভেতরের আলোকে নতুন করে জ্বালান।"),
+]
+FESTIVALS = {
+    "goodmorning": {"name": ("Good morning", "सुप्रभात", "সুপ্রভাত"), "bg": (38, 33, 92), "motif": "sunrise",
+                    "msg": ("A new day, a fresh start. Wishing you a calm and happy day.",
+                            "नया दिन, नई शुरुआत। आपका दिन शांत और सुखद हो।",
+                            "নতুন দিন, নতুন শুরু। আপনার দিন শান্ত ও আনন্দময় হোক।")},
+    "diwali": {"name": ("Shubh Deepavali", "शुभ दीपावली", "শুভ দীপাবলি"), "bg": (65, 36, 2), "motif": "diya",
+               "msg": ("May your home glow with light, love and new beginnings.",
+                       "आपका घर रोशनी, प्रेम और नई शुरुआत से जगमगाए।",
+                       "আপনার ঘর আলো, ভালোবাসা আর নতুন শুরুতে ভরে উঠুক।")},
+    "bhaidooj": {"name": ("Happy Bhai Dooj", "भाई दूज की शुभकामनाएँ", "শুভ ভাইফোঁটা"), "bg": (75, 21, 40),
+                 "motif": "diya",
+                 "msg": ("To the bond that grows stronger every year.",
+                         "हर साल और मज़बूत होते इस रिश्ते के नाम।",
+                         "প্রতি বছর আরও মজবুত হওয়া এই বন্ধনের জন্য।")},
+    "chhath": {"name": ("Chhath Puja", "छठ पूजा", "ছট পূজা"), "bg": (74, 27, 12), "motif": "sunwater",
+               "msg": ("May the rising sun bless you with health, strength and joy.",
+                       "उगता सूरज आपको स्वास्थ्य, शक्ति और आनंद का आशीर्वाद दे।",
+                       "উদীয়মান সূর্য আপনাকে স্বাস্থ্য, শক্তি ও আনন্দের আশীর্বাদ দিক।")},
+    "durga": {"name": ("Shubho Durga Puja", "दुर्गा पूजा की शुभकामनाएँ", "শুভ দুর্গাপূজা"), "bg": (80, 19, 19),
+              "motif": "lotus",
+              "msg": ("May Maa Durga fill your life with courage, joy and protection.",
+                      "माँ दुर्गा आपके जीवन को साहस, आनंद और सुरक्षा से भर दें।",
+                      "মা দুর্গা আপনার জীবন সাহস, আনন্দ ও সুরক্ষায় ভরিয়ে দিন।")},
+    "navratri": {"name": ("Happy Navratri", "शुभ नवरात्रि", "শুভ নবরাত্রি"), "bg": (60, 52, 137), "motif": "lotus",
+                 "msg": ("Nine nights of devotion, nine blessings of strength.",
+                         "भक्ति की नौ रातें, शक्ति के नौ आशीर्वाद।",
+                         "ভক্তির নয় রাত, শক্তির নয় আশীর্বাদ।")},
+    "holi": {"name": ("Happy Holi", "होली की शुभकामनाएँ", "হোলির শুভেচ্ছা"), "bg": (4, 52, 44), "motif": "dots",
+             "msg": ("May your life be as bright and joyful as the colours of Holi.",
+                     "आपका जीवन होली के रंगों जैसा उज्ज्वल और खुशहाल हो।",
+                     "আপনার জীবন হোলির রঙের মতো উজ্জ্বল ও আনন্দময় হোক।")},
+    "rakhi": {"name": ("Happy Raksha Bandhan", "रक्षाबंधन की शुभकामनाएँ", "রাখিবন্ধনের শুভেচ্ছা"),
+              "bg": (75, 21, 40), "motif": "lotus",
+              "msg": ("A thread of love, a promise of care.", "प्रेम का धागा, साथ निभाने का वादा।",
+                      "ভালোবাসার সুতো, পাশে থাকার প্রতিশ্রুতি।")},
+    "sankranti": {"name": ("Happy Makar Sankranti", "मकर संक्रांति की शुभकामनाएँ", "মকর সংক্রান্তির শুভেচ্ছা"),
+                  "bg": (12, 68, 124), "motif": "kite",
+                  "msg": ("May your dreams fly high like kites in the winter sky.",
+                          "आपके सपने सर्दियों के आसमान में पतंगों की तरह ऊँचे उड़ें।",
+                          "আপনার স্বপ্ন শীতের আকাশে ঘুড়ির মতো উঁচুতে উড়ুক।")},
+}
 
-@st.cache_resource
-def font_bytes(kind):
+def sign_l(i, lang):
+    return pl((SIGNS[i], SIGNS_HI[i], SIGNS_BN[i]), lang)
+
+def nak_l(i, lang):
+    return pl((NAKSHATRAS[i], NAK_HI[i], NAK_BN[i]), lang)
+
+def date_line(day, lang):
+    wd = day.weekday()
+    if lang == "en":
+        return f"{EN_WD[wd]}, {day.day} {EN_MON[day.month - 1]}"
+    if lang == "hi":
+        return f"{VARA_T[wd][1]}, {day.day} {MON_HI[day.month - 1]}"
+    return f"{VARA_T[wd][2]}, {day.day} {MON_BN[day.month - 1]}"
+
+def daily_sky(ref):
+    jd = julian_day(ref)
+    moon, _ = sidereal_lon(jd, swe.MOON)
+    sun, _ = sidereal_lon(jd, swe.SUN)
+    tithi = int(((moon - sun) % 360) // 12)
+    return {"moon_sign": int(moon // 30), "nak": int(moon // NAK_LEN),
+            "tithi_name": 14 if tithi == 14 else 15 if tithi == 29 else tithi % 15,
+            "paksha": 0 if tithi < 15 else 1}
+
+def daily_cards_prompt(day, ref, lang):
+    sky = daily_sky(ref)
+    lang_name = ANSWER_LANG[lang]
+    rashi_lines = "\n".join(f"{i + 1}. {SIGNS[i]}: today's Moon is in the "
+                            f"{ordinal((sky['moon_sign'] - i) % 12 + 1)} sign from it" for i in range(12))
+    nak_list = ", ".join(NAKSHATRAS)
+    fest_list = ", ".join(FESTIVALS)
+    return f"""You write short, warm, positive daily messages for Dishara, a Vedic astrology app.
+Date: {day:%d %B %Y}, {EN_WD[day.weekday()]}. Today's Moon: {SIGNS[sky['moon_sign']]}, nakshatra
+{NAKSHATRAS[sky['nak']]}, tithi {PAKSHA_T[sky['paksha']][0]} {TITHI_T[sky['tithi_name']][0]}.
+
+Write everything in {lang_name}, natural and everyday, in {lang_name}'s own script.
+Rules: no emojis, no hashtags, no predictions of specific events, no fear, no promises about health,
+money or relationships, never mention death, illness or accidents. Keep every line positive and practical.
+
+Return ONLY JSON with exactly this shape:
+{{"thought": [3 different strings, max 14 words each, inspired by today's nakshatra and weekday],
+  "rashi": [12 items in the order below; each item is a list of 3 different strings, max 9 words each,
+            a gentle message for that Moon sign today based on the Moon's position from it],
+  "nakshatra": [27 items in the order below; each item is a list of 2 strings, max 12 words each,
+                about that nakshatra's natural strengths and how to use them today],
+  "festival": {{one key for each of: {fest_list}; each value is a list of 2 warm greeting wishes,
+               max 18 words each, suitable to send to family and friends}}}}
+
+Rashis (Moon signs) in order, with today's Moon position from each:
+{rashi_lines}
+
+Nakshatras in order: {nak_list}"""
+
+def daily_content(day, lang):
+    key = f"{day.isoformat()}|{lang}"
+    cache = st.session_state.setdefault("daily_cards", {})
+    if key not in cache:
+        row = get_daily_cards(day.isoformat(), lang)
+        if row:
+            cache[key] = row
+    return cache.get(key)
+
+def pick_variant(content, path, var, fallback):
     try:
-        r = requests.get(FONT_URLS[kind], timeout=10)
+        node = content
+        for p in path:
+            node = node[p]
+        if isinstance(node, list) and node:
+            return str(node[var % len(node)])
+        if isinstance(node, str) and node:
+            return node
+    except Exception:
+        pass
+    return fallback
+
+# ---------------- SHAREABLE CARDS: DRAWING ----------------
+CW, CH = 1080, 1350
+C_BG, C_BG2 = (38, 33, 92), (60, 52, 137)
+C_GOLD, C_ORANGE = (250, 199, 117), (239, 159, 39)
+C_LAV, C_MUTED, C_WHITE, C_LINE = (206, 203, 246), (175, 169, 236), (238, 237, 254), (127, 119, 221)
+CARD_FONT_URLS = {
+    "en": ("https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-Regular.ttf",
+           "https://github.com/google/fonts/raw/main/ofl/poppins/Poppins-SemiBold.ttf"),
+    "hi": ("https://github.com/google/fonts/raw/main/ofl/hind/Hind-Regular.ttf",
+           "https://github.com/google/fonts/raw/main/ofl/hind/Hind-SemiBold.ttf"),
+    "bn": ("https://github.com/google/fonts/raw/main/ofl/hindsiliguri/HindSiliguri-Regular.ttf",
+           "https://github.com/google/fonts/raw/main/ofl/hindsiliguri/HindSiliguri-SemiBold.ttf"),
+}
+try:
+    RAQM_OK = bool(features.check_feature("raqm"))
+except Exception:
+    RAQM_OK = False
+
+@st.cache_resource(show_spinner=False)
+def font_data(url):
+    try:
+        r = requests.get(url, timeout=15)
         r.raise_for_status()
         return r.content
     except Exception:
         return None
 
-def card_font(size, bold=False):
-    data = font_bytes("bold" if bold else "regular")
-    if data:
-        return ImageFont.truetype(io.BytesIO(data), size)
-    return ImageFont.load_default(size=size)
+def lang_ok(lang):
+    if lang == "en":
+        return True
+    return RAQM_OK and all(font_data(u) for u in CARD_FONT_URLS[lang])
 
-def center_text(d, y, text, f, fill):
-    w = d.textlength(text, font=f)
-    d.text(((CW - w) / 2, y), text, font=f, fill=fill)
+def card_font(size, bold, lang):
+    data = font_data(CARD_FONT_URLS[lang][1 if bold else 0])
+    if data is None:
+        if lang != "en":
+            return card_font(size, bold, "en")
+        return ImageFont.load_default(size=size)
+    if lang != "en":
+        return ImageFont.truetype(io.BytesIO(data), size, layout_engine=ImageFont.Layout.RAQM)
+    return ImageFont.truetype(io.BytesIO(data), size)
 
-def wrap_text(d, text, f, max_w):
-    lines, cur = [], ""
-    for word in text.split():
-        test = (cur + " " + word).strip()
-        if d.textlength(test, font=f) <= max_w:
-            cur = test
-        else:
-            if cur:
-                lines.append(cur)
-            cur = word
-    if cur:
-        lines.append(cur)
-    return lines
+class Card:
+    def __init__(self, lang, bg=C_BG):
+        self.lang = lang
+        self.img = Image.new("RGB", (CW, CH), bg)
+        self.d = ImageDraw.Draw(self.img)
 
-def card_base():
-    img = Image.new("RGB", (CW, CH), C_BG)
-    d = ImageDraw.Draw(img)
-    cx, cy, r = CW // 2, 260, 110
+    def f(self, size, bold=False):
+        return card_font(size, bold, self.lang)
+
+    def center(self, y, text, size, fill, bold=False):
+        f = self.f(size, bold)
+        w = self.d.textlength(text, font=f)
+        self.d.text(((CW - w) / 2, y), text, font=f, fill=fill)
+
+    def left(self, x, y, text, size, fill, bold=False):
+        self.d.text((x, y), text, font=self.f(size, bold), fill=fill)
+
+    def wrap(self, text, size, bold, max_w):
+        f = self.f(size, bold)
+        lines, cur_l = [], ""
+        for word in str(text).split():
+            test = (cur_l + " " + word).strip()
+            if self.d.textlength(test, font=f) <= max_w:
+                cur_l = test
+            else:
+                if cur_l:
+                    lines.append(cur_l)
+                cur_l = word
+        if cur_l:
+            lines.append(cur_l)
+        return lines
+
+    def block(self, y, text, size, fill, bold=False, max_w=CW - 200, gap=1.35):
+        for ln in self.wrap(text, size, bold, max_w):
+            self.center(y, ln, size, fill, bold)
+            y += int(size * gap)
+        return y
+
+    def png(self):
+        buf = io.BytesIO()
+        self.img.save(buf, format="PNG")
+        return buf.getvalue()
+
+def draw_sunrise(d, cx, cy, r):
     for deg in (20, 55, 90, 125, 160):
         a = math.radians(deg)
-        d.line([(cx + (r + 25) * math.cos(a), cy - (r + 25) * math.sin(a)),
-                (cx + (r + 60) * math.cos(a), cy - (r + 60) * math.sin(a))], fill=C_GOLD, width=8)
+        d.line([(cx + (r + r * 0.25) * math.cos(a), cy - (r + r * 0.25) * math.sin(a)),
+                (cx + (r + r * 0.55) * math.cos(a), cy - (r + r * 0.55) * math.sin(a))],
+               fill=C_GOLD, width=max(3, r // 14))
     d.pieslice([cx - r, cy - r, cx + r, cy + r], 180, 360, fill=C_ORANGE)
     r2 = int(r * 0.58)
     d.pieslice([cx - r2, cy - r2, cx + r2, cy + r2], 180, 360, fill=C_GOLD)
-    d.line([(cx - r - 90, cy), (cx + r + 90, cy)], fill=C_LINE, width=4)
-    center_text(d, 290, "Dishara", card_font(84, True), C_GOLD)
-    d.line([(140, 1200), (CW - 140, 1200)], fill=(83, 74, 183), width=2)
-    center_text(d, 1225, "Your stars, your direction", card_font(32), C_LAV)
-    center_text(d, 1272, APP_URL.replace("https://", ""), card_font(34, True), C_ORANGE)
-    return img, d
+    d.line([(cx - r * 1.8, cy), (cx + r * 1.8, cy)], fill=C_LINE, width=3)
 
-def energy_card(name, date_str, score, label, theme):
-    img, d = card_base()
-    center_text(d, 430, f"{name}'s energy today", card_font(44), C_LAV)
-    center_text(d, 492, date_str, card_font(34), C_MUTED)
-    center_text(d, 540, str(score), card_font(220, True), C_GOLD)
-    center_text(d, 820, f"out of 100 · {label}", card_font(48, True), C_WHITE)
-    y = 930
-    for line in wrap_text(d, theme, card_font(44), CW - 220):
-        center_text(d, y, line, card_font(44), C_LAV)
-        y += 62
-    return img
+def draw_star(d, cx, cy, r_out, r_in, fill):
+    pts = []
+    for i in range(10):
+        a = math.radians(-90 + i * 36)
+        r = r_out if i % 2 == 0 else r_in
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    d.polygon(pts, fill=fill)
 
-def profile_card(name, lines):
-    img, d = card_base()
-    center_text(d, 430, name, card_font(64, True), C_WHITE)
-    y = 540
-    for label, value in lines:
-        center_text(d, y, label, card_font(32), C_MUTED)
-        y += 46
-        for ln in wrap_text(d, value, card_font(42, True), CW - 200):
-            center_text(d, y, ln, card_font(42, True), C_GOLD)
-            y += 56
-        y += 30
-    return img
+def draw_emblem(d, cx, cy, r):
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=C_GOLD, width=4)
+    ri = int(r * 0.72)
+    d.ellipse([cx - ri, cy - ri, cx + ri, cy + ri], fill=C_BG)
+    draw_star(d, cx, cy, r * 0.5, r * 0.2, C_GOLD)
+    for a in (0, 90, 180, 270):
+        ar = math.radians(a)
+        x, y = cx + (r + 18) * math.cos(ar), cy + (r + 18) * math.sin(ar)
+        d.ellipse([x - 6, y - 6, x + 6, y + 6], fill=C_ORANGE)
 
-def to_png(img):
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return buf.getvalue()
+def draw_diya(d, cx, cy, s):
+    d.polygon([(cx, cy - s * 1.35), (cx + s * 0.32, cy - s * 0.62), (cx, cy - s * 0.3),
+               (cx - s * 0.32, cy - s * 0.62)], fill=C_GOLD)
+    d.polygon([(cx, cy - s * 1.0), (cx + s * 0.16, cy - s * 0.6), (cx, cy - s * 0.42),
+               (cx - s * 0.16, cy - s * 0.6)], fill=C_ORANGE)
+    d.chord([cx - s, cy - s * 0.55, cx + s, cy + s * 0.55], 0, 180, fill=(186, 117, 23))
+    d.line([(cx - s * 0.85, cy + s * 0.08), (cx + s * 0.85, cy + s * 0.08)], fill=C_GOLD, width=5)
 
-def profile_lines(chart, cur, now):
-    P = chart["planets"]
-    lines = []
-    if not chart["time_unknown"]:
-        lines.append(("Rising sign (Lagna)", SHORT[chart["asc_sign"]]))
-    lines.append(("Moon sign & nakshatra", f"{SHORT[P['Moon']['sign']]} · {NAKSHATRAS[P['Moon']['nak']]}"))
-    lines.append(("Current life chapter", f"{cur['lord']} period: {CHAPTER_THEME_T[cur['lord']][0]}"))
-    ranked = sorted((area_analysis(chart, k, now) for k in AREAS), key=lambda a: -a["net"])[:2]
-    lines.append(("Natural strengths", " & ".join(a["label"] for a in ranked)))
-    return lines
+def draw_lotus(d, cx, cy, s):
+    for off, col in ((-0.62, (237, 147, 177)), (0.62, (237, 147, 177)), (-0.32, (244, 192, 209)),
+                     (0.32, (244, 192, 209)), (0.0, (251, 234, 240))):
+        top = cy - s * (0.95 - abs(off) * 0.45)
+        d.ellipse([cx + off * s - s * 0.24, top, cx + off * s + s * 0.24, cy + s * 0.12], fill=col)
+    d.chord([cx - s * 1.1, cy - s * 0.1, cx + s * 1.1, cy + s * 0.5], 0, 180, fill=(29, 158, 117))
 
-def share_section(chart, pname, cur, ind, today, now):
-    st.markdown(f"#### {t('share_title')}")
-    kind = st.radio(t("share_pick"), ["energy", "profile"], horizontal=True, key="share_kind",
-                    format_func=lambda k: t("share_energy") if k == "energy" else t("share_profile"))
-    if kind == "energy":
-        img = energy_card(pname, f"{today:%d %b %Y}", ind["score"], BAND_T[ind["label"]][0][0],
-                          MOON_HOUSE_T[ind["house"]][0])
-        msg = (f"My Dishara energy today: {ind['score']}/100 ({BAND_T[ind['label']][0][0]}). "
-               f"Check yours free: {APP_URL}")
+def draw_kite(d, cx, cy, s):
+    d.polygon([(cx, cy - s), (cx + s * 0.7, cy), (cx, cy + s), (cx - s * 0.7, cy)], fill=C_ORANGE)
+    d.line([(cx, cy - s), (cx, cy + s)], fill=C_GOLD, width=4)
+    d.line([(cx - s * 0.7, cy), (cx + s * 0.7, cy)], fill=C_GOLD, width=4)
+    pts = [(cx, cy + s)]
+    for i in range(1, 7):
+        pts.append((cx + (25 if i % 2 else -25), cy + s + i * 30))
+    d.line(pts, fill=C_LAV, width=3)
+    for x, y in pts[2::2]:
+        d.polygon([(x - 12, y - 8), (x + 12, y - 8), (x, y + 10)], fill=C_GOLD)
+
+def draw_dots(d, cx, cy, s):
+    spots = [(-0.8, -0.3, 0.32, (212, 83, 126)), (0.7, -0.5, 0.28, (239, 159, 39)),
+             (0.0, 0.25, 0.36, (93, 202, 165)), (-0.4, 0.75, 0.22, (127, 119, 221)),
+             (0.85, 0.55, 0.24, (250, 199, 117)), (0.15, -0.75, 0.18, (240, 153, 123))]
+    for dx, dy, rr, col in spots:
+        x, y, r = cx + dx * s, cy + dy * s, rr * s
+        d.ellipse([x - r, y - r, x + r, y + r], fill=col)
+
+def draw_sunwater(d, cx, cy, s):
+    draw_sunrise(d, cx, cy, int(s * 0.8))
+    for i in range(3):
+        y = cy + s * 0.25 + i * s * 0.18
+        pts = [(cx - s * 1.3 + k * s * 0.26, y + (8 if k % 2 else -8)) for k in range(11)]
+        d.line(pts, fill=C_LAV, width=4)
+
+MOTIFS = {"sunrise": lambda d, cx, cy, s: draw_sunrise(d, cx, cy, int(s * 0.8)),
+          "diya": draw_diya, "lotus": draw_lotus, "kite": draw_kite, "dots": draw_dots,
+          "sunwater": draw_sunwater}
+
+def card_frame(c, cta, header=True):
+    if header:
+        draw_sunrise(c.d, CW // 2, 150, 60)
+        c.center(172, pl(CARD_T["wordmark"], c.lang), 44, C_GOLD, True)
+    c.d.line([(140, 1205), (CW - 140, 1205)], fill=(83, 74, 183), width=2)
+    c.center(1222, f"{pl(CARD_T['wordmark'], c.lang)} · {cta}", 30, C_LAV)
+    c.center(1272, APP_URL.replace("https://", ""), 32, C_ORANGE, True)
+
+def identity_card(lang, label, name, traits, line, ruled, from_line, cta):
+    c = Card(lang)
+    card_frame(c, cta)
+    c.center(285, label, 38, C_MUTED)
+    y = c.block(335, name, 80, C_GOLD, True, max_w=CW - 160, gap=1.15)
+    draw_emblem(c.d, CW // 2, y + 125, 95)
+    y += 270
+    c.center(y, traits, 38, C_LAV, True)
+    y = c.block(y + 75, line, 42, C_WHITE, False, max_w=CW - 220)
+    c.center(y + 20, ruled, 32, C_MUTED)
+    if from_line:
+        c.center(1135, from_line, 34, C_GOLD, True)
+    return c
+
+def message_card(lang, title, sub, msg, from_line, cta):
+    c = Card(lang)
+    card_frame(c, cta)
+    c.center(290, title, 48, C_GOLD, True)
+    c.center(360, sub, 32, C_MUTED)
+    c.block(500, msg, 60, C_WHITE, True, max_w=CW - 200, gap=1.3)
+    draw_sunrise(c.d, CW // 2, 1075, 70)
+    if from_line:
+        c.center(1112, from_line, 32, C_GOLD, True)
+    return c
+
+def guide_card(lang, title, sub, lines12, from_line, cta):
+    c = Card(lang)
+    card_frame(c, cta)
+    c.center(265, title, 46, C_GOLD, True)
+    c.center(330, sub, 28, C_MUTED)
+    top, rowh = 395, 120
+    for i in range(12):
+        col, row = i % 2, i // 2
+        x, y = (80 if col == 0 else 560), top + row * rowh
+        c.d.line([(x, y), (x + 440, y)], fill=(83, 74, 183), width=2)
+        c.left(x, y + 10, sign_l(i, lang), 30, C_GOLD, True)
+        ly = y + 52
+        for ln in c.wrap(lines12[i], 25, False, 440)[:2]:
+            c.left(x, ly, ln, 25, C_LAV)
+            ly += 32
+    if from_line:
+        c.center(1150, from_line, 30, C_GOLD, True)
+    return c
+
+def festival_card(lang, key, msg, sender, cta):
+    fest = FESTIVALS[key]
+    c = Card(lang, fest["bg"])
+    card_frame(c, cta, header=False)
+    y = c.block(150, pl(fest["name"], lang), 76, C_GOLD, True, max_w=CW - 160, gap=1.15)
+    MOTIFS[fest["motif"]](c.d, CW // 2, max(y + 230, 560), 150)
+    y = c.block(790, msg, 44, (250, 238, 218), False, max_w=CW - 220)
+    if sender:
+        c.center(max(y + 30, 1060), pl(CARD_T["with_love"], lang).format(n=sender), 42, C_GOLD, True)
+    return c
+
+def share_tab(chart, pname, today, day_ref):
+    st.markdown(f"<h3 style='margin:0'>{t('sh_title')}</h3><p class='muted'>{t('sh_sub')} · "
+                f"{date_line(today, L())}</p>", unsafe_allow_html=True)
+    kinds = ["my_rashi", "my_nak", "today_me", "guide", "thought", "festival"]
+    kind = st.segmented_control("card_kind", kinds, default="guide", key="card_kind",
+                                format_func=lambda k: t("k_" + k), label_visibility="collapsed")
+    kind = kind or "guide"
+    pc, cc = st.columns([1.15, 1])
+    with cc:
+        codes = list(LANG_CODES)
+        card_lang = st.radio(t("sh_lang"), codes, horizontal=True, key="card_lang",
+                             index=codes.index(L()), format_func=lambda c: LANG_CODES[c])
+        lang = card_lang if lang_ok(card_lang) else "en"
+        if lang != card_lang:
+            st.caption(t("sh_lang_off"))
+        fest_key = None
+        if kind == "festival":
+            fest_key = st.selectbox(t("sh_fest"), list(FESTIVALS), key="card_fest",
+                                    format_func=lambda k: pick(FESTIVALS[k]["name"]))
+        if st.button(t("sh_another"), key="sh_another_btn"):
+            st.session_state.card_var = st.session_state.get("card_var", 0) + 1
+        var = st.session_state.get("card_var", 0)
+        sender = st.text_input(t("sh_name"), key="card_name").strip()
+
+    content = daily_content(today, lang)
+    if content is None:
+        st.session_state.need_cards = (today.isoformat(), lang)
+    sky = daily_sky(day_ref)
+    my_rashi = chart["planets"]["Moon"]["sign"]
+    my_nak = chart["planets"]["Moon"]["nak"]
+
+    def rashi_msg(i):
+        fb = pl(MOON_HOUSE_T[(sky["moon_sign"] - i) % 12 + 1], lang)
+        return pick_variant(content, ["rashi", i], var, fb)
+
+    from_line = pl(CARD_T["from"], lang).format(n=sender) if sender else ""
+    day_sub = date_line(today, lang)
+    moon_sub = f"{day_sub} · {pl(CARD_T['moon_in'], lang).format(n=nak_l(sky['nak'], lang))}"
+    if kind == "my_rashi":
+        card = identity_card(lang, pl(CARD_T["my_moon"], lang), sign_l(my_rashi, lang),
+                             pl(RASHI_TRAITS[my_rashi], lang), rashi_msg(my_rashi),
+                             pl(CARD_T["ruled"], lang).format(p=pl(PLANET_T[SIGN_LORDS[my_rashi]], lang)),
+                             from_line, pl(CARD_T["cta_rashi"], lang))
+    elif kind == "my_nak":
+        trait = pl(NAK_TRAITS[my_nak], lang).split(" · ")[0]
+        trait = trait.lower() if lang == "en" else trait
+        fb = pl(CARD_T["nak_fallback"], lang).format(t=trait)
+        card = identity_card(lang, pl(CARD_T["my_nak"], lang), nak_l(my_nak, lang),
+                             pl(NAK_TRAITS[my_nak], lang), pick_variant(content, ["nakshatra", my_nak], var, fb),
+                             pl(CARD_T["ruled"], lang).format(p=pl(PLANET_T[DASHA_ORDER[my_nak % 9][0]], lang)),
+                             from_line, pl(CARD_T["cta_nak"], lang))
+    elif kind == "today_me":
+        card = message_card(lang, pl(CARD_T["today_for"], lang).format(s=sign_l(my_rashi, lang)), day_sub,
+                            rashi_msg(my_rashi), from_line, pl(CARD_T["cta_rashi"], lang))
+    elif kind == "guide":
+        card = guide_card(lang, pl(CARD_T["guide"], lang), moon_sub, [rashi_msg(i) for i in range(12)],
+                          from_line, pl(CARD_T["cta_rashi"], lang))
+    elif kind == "thought":
+        fb = pl(FALLBACK_THOUGHT[today.weekday()], lang)
+        card = message_card(lang, pl(CARD_T["thought"], lang), moon_sub,
+                            pick_variant(content, ["thought"], var, fb), from_line, pl(CARD_T["cta_day"], lang))
     else:
-        img = profile_card(pname, profile_lines(chart, cur, now))
-        msg = f"I just explored my Vedic birth chart on Dishara. Try yours free: {APP_URL}"
-    png = to_png(img)
-    st.image(png, width=340)
-    c1, c2 = st.columns(2)
-    c1.download_button(t("share_download"), data=png, file_name=f"dishara-{kind}.png",
-                       mime="image/png", type="primary", use_container_width=True)
-    c2.markdown(f"<a href='https://wa.me/?text={urllib.parse.quote(msg)}' target='_blank' "
-                f"style='display:block;text-align:center;background:#25D366;color:#ffffff;border-radius:999px;"
-                f"padding:0.5rem 1rem;text-decoration:none;font-weight:500'>{t('share_whatsapp')}</a>",
-                unsafe_allow_html=True)
-    st.caption(t("share_hint"))
+        fb = pl(FESTIVALS[fest_key]["msg"], lang)
+        card = festival_card(lang, fest_key, pick_variant(content, ["festival", fest_key], var, fb),
+                             sender, pl(CARD_T["cta_day"], lang))
+    png = card.png()
+    with pc:
+        st.image(png, use_container_width=True)
+    with cc:
+        st.download_button(t("sh_download"), data=png, file_name=f"dishara-{kind}-{today}.png",
+                           mime="image/png", use_container_width=True)
+        msg = t("sh_wa_msg", url=APP_URL)
+        st.markdown(f"<a href='https://wa.me/?text={urllib.parse.quote(msg)}' target='_blank' "
+                    f"style='display:block;text-align:center;background:#25D366;color:#ffffff;border-radius:999px;"
+                    f"padding:0.5rem 1rem;text-decoration:none;font-weight:500;margin-top:8px'>{t('sh_whatsapp')}</a>",
+                    unsafe_allow_html=True)
+        st.caption(t("sh_hint"))
+        if content is None:
+            st.caption(t("sh_fresh"))
+
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
@@ -1794,10 +2244,10 @@ def hero():
 
 def lang_picker(uid=None, key="lang_pick"):
     codes = list(LANG_CODES)
-    cur = L()
-    choice = st.selectbox("Language · भाषा · ভাষা", codes, index=codes.index(cur),
+    cur_l = L()
+    choice = st.selectbox("Language · भाषा · ভাষা", codes, index=codes.index(cur_l),
                           format_func=lambda c: LANG_CODES[c], key=key)
-    if choice != cur:
+    if choice != cur_l:
         st.session_state.ui_lang = choice
         if uid:
             save_user_lang(uid, choice)
@@ -1821,13 +2271,7 @@ def auth_screen():
             submitted = st.form_submit_button(t("tab_signin"))
         if submitted:
             if not email.strip() or not pw:
-                st.warning(pick((
-                    "Your browser filled in the boxes, but the app didn't receive them. Please click inside "
-                    "the Email and Password boxes (or press Tab through them), then click Sign in again.",
-                    "आपके ब्राउज़र ने बॉक्स भर दिए, लेकिन ऐप तक जानकारी नहीं पहुँची। कृपया ईमेल और पासवर्ड बॉक्स में "
-                    "एक बार क्लिक करें (या Tab दबाएँ), फिर दोबारा साइन इन दबाएँ।",
-                    "আপনার ব্রাউজার বাক্সগুলি পূরণ করেছে, কিন্তু অ্যাপ তথ্যটি পায়নি। অনুগ্রহ করে ইমেল ও পাসওয়ার্ড বাক্সে "
-                    "একবার ক্লিক করুন (বা Tab চাপুন), তারপর আবার সাইন ইন চাপুন।")))
+                st.warning(t("autofill"))
             else:
                 try:
                     res = auth_client().auth.sign_in_with_password({"email": email.strip(), "password": pw})
@@ -2013,7 +2457,8 @@ today = (now + timedelta(hours=IST)).date()
 day_ref = datetime.combine(today, datetime.min.time()) + timedelta(hours=6 - IST)
 cur = next(d for d in chart["dashas"] if d["start"] <= now < d["end"])
 
-home, chat, kundali, match = st.tabs([t("tab_home"), t("tab_ask"), t("tab_kundali"), t("tab_match")])
+home, chat, kundali, match, share = st.tabs([t("tab_home"), t("tab_ask"), t("tab_kundali"),
+                                             t("tab_match"), t("tab_share")])
 
 # ----- HOME -----
 with home:
@@ -2052,30 +2497,12 @@ with home:
         saved_tip = get_saved_tip(uid, pid, today, L())
         if saved_tip:
             tips_cache[tip_key] = saved_tip
-        else:
-            with st.spinner(t("preparing_tips")):
-                ind_text = (f"Moon today in {ind['moon_sign']}, nakshatra {NAKSHATRAS[ind['nak_idx']]}; "
-                            f"Tara: {ind['tara']} ({'good' if ind['good_tara'] else 'challenging'}); "
-                            f"Moon is {ordinal(ind['chandra'])} from natal Moon "
-                            f"({'favourable' if ind['good_chandra'] else 'less favourable'}); "
-                            f"Moon transits house {ind['house']} from Lagna; "
-                            + (f"Moon's Ashtakavarga points today: {ind['bindus']}/8; "
-                               if ind["bindus"] is not None else "")
-                            + f"day score {ind['score']}/100 ({ind['label']}).")
-                tip = ask_dishara(
-                    f"BIRTH CHART:\n{chart_text(chart, now)}\n\nTODAY'S INDICATORS:\n{ind_text}\n\n"
-                    f"DAILY TIPS REQUEST for {today:%d %b %Y}: Start with one bold line naming today's "
-                    f"theme. Then exactly 3 bullets: Work, Relationships, Wellbeing (translate these labels "
-                    f"and make them bold), each one practical action with a short reason from today's Moon, "
-                    f"Tara or the current dasha. Under 120 words.", pname, prel)
-            if tip:
-                save_tip(uid, pid, today, L(), tip)
-                tips_cache[tip_key] = tip
-            else:
-                st.caption(t("tips_soon"))
+    st.markdown(f"<div class='card'><p class='muted'>{t('todays_tips')}</p></div>", unsafe_allow_html=True)
+    tips_slot = st.empty()
     if tip_key in tips_cache:
-        st.markdown(f"<div class='card'><p class='muted'>{t('todays_tips')}</p></div>", unsafe_allow_html=True)
-        st.markdown(tips_cache[tip_key])
+        tips_slot.markdown(tips_cache[tip_key])
+    else:
+        tips_slot.caption(t("preparing_tips"))
 
     pct = int(100 * (now - cur["start"]) / (cur["end"] - cur["start"]))
     st.markdown(f"""<div class="card"><p class="muted">{t('current_chapter', date=f"{cur['end']:%b %Y}")}</p>
@@ -2087,8 +2514,8 @@ with home:
                 unsafe_allow_html=True)
     if chart["time_unknown"]:
         st.caption(t("moon_chart_caption"))
-panchang_section(profile, now)
-share_section(chart, pname, cur, ind, today, now)
+    panchang_section(profile, now)
+
 # ----- ASK DISHARA -----
 with chat:
     convs = list_conversations(uid, pid)
@@ -2272,13 +2699,18 @@ with match:
                 if mres.get("reading"):
                     st.markdown(mres["reading"])
 
+# ----- SHARE -----
+with share:
+    share_tab(chart, pname, today, day_ref)
+
 # ----- FOOTER -----
 st.divider()
 if "paste-your-link" not in FEEDBACK_URL:
     st.markdown(f"<p class='muted' style='text-align:center'>{t('feedback')} "
                 f"<a href='{FEEDBACK_URL}' style='color:#FAC775'>{t('feedback_link')}</a></p>",
                 unsafe_allow_html=True)
-st.markdown(f"<p class='muted' style='text-align:center;margin-bottom:20px'>{t('signed_in', email=html.escape(user_email))} · "
+st.markdown(f"<p class='muted' style='text-align:center;margin-bottom:20px'>"
+            f"{t('signed_in', email=html.escape(user_email))} · "
             f"<a href='?page=privacy' target='_blank' style='color:#AFA9EC'>{t('privacy_link')}</a></p>",
             unsafe_allow_html=True)
 _, f1, f2, _ = st.columns([1, 2, 2, 1])
@@ -2294,3 +2726,41 @@ if f2.button(t("sign_out"), use_container_width=True):
     st.session_state.clear()
     st.session_state.ui_lang = keep_lang
     st.rerun()
+
+# ----- DAILY TIPS: generated last, so the rest of the page appears first -----
+tried = st.session_state.setdefault("tips_tried", set())
+if tip_key not in st.session_state.tips and tip_key not in tried:
+    tried.add(tip_key)
+    ind_text = (f"Moon today in {ind['moon_sign']}, nakshatra {NAKSHATRAS[ind['nak_idx']]}; "
+                f"Tara: {ind['tara']} ({'good' if ind['good_tara'] else 'challenging'}); "
+                f"Moon is {ordinal(ind['chandra'])} from natal Moon "
+                f"({'favourable' if ind['good_chandra'] else 'less favourable'}); "
+                f"Moon transits house {ind['house']} from Lagna; "
+                + (f"Moon's Ashtakavarga points today: {ind['bindus']}/8; " if ind["bindus"] is not None else "")
+                + f"day score {ind['score']}/100 ({ind['label']}).")
+    tip = ask_dishara(
+        f"BIRTH CHART:\n{chart_text(chart, now)}\n\nTODAY'S INDICATORS:\n{ind_text}\n\n"
+        f"DAILY TIPS REQUEST for {today:%d %b %Y}: Start with one bold line naming today's "
+        f"theme. Then exactly 3 bullets: Work, Relationships, Wellbeing (translate these labels "
+        f"and make them bold), each one practical action with a short reason from today's Moon, "
+        f"Tara or the current dasha. Under 120 words.", pname, prel, fast=True)
+    if tip:
+        save_tip(uid, pid, today, L(), tip)
+        st.session_state.tips[tip_key] = tip
+        tips_slot.markdown(tip)
+    else:
+        tips_slot.caption(t("tips_soon"))
+
+# ----- DAILY SHARE-CARD MESSAGES: generated once per day per language, shared by all users -----
+need = st.session_state.get("need_cards")
+if need:
+    st.session_state.need_cards = None
+    cards_tried = st.session_state.setdefault("cards_tried", set())
+    if need not in cards_tried:
+        cards_tried.add(need)
+        day_iso, lang_c = need
+        if get_daily_cards(day_iso, lang_c) is None:
+            data = ai_json(daily_cards_prompt(today, day_ref, lang_c))
+            if data:
+                save_daily_cards(day_iso, lang_c, data)
+                st.session_state.setdefault("daily_cards", {})[f"{day_iso}|{lang_c}"] = data
