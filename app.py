@@ -1645,7 +1645,8 @@ HOW TO ANSWER (default):
   headings into the reply language.
 - Be specific to THIS chart. No generic Lagna or sun-sign personality text unless asked.
 - Explain any Sanskrit term in a few words. Under 250 words.
-- If the request says DAILY TIPS, COMPATIBILITY or SADE SATI, follow the format given in the request instead.
+- If the request says DAILY TIPS, COMPATIBILITY, SADE SATI, CAREER REPORT or RELATIONSHIP REPORT,
+  follow the format given in the request instead.
 
 RULES:
 1. Use ONLY the data provided. Never invent positions, yogas, roles, scores or dates.
@@ -1976,6 +1977,13 @@ def fmt_date_l(d):
     if L() == "bn":
         return f"{d.day} {MON_BN[d.month - 1]} {d.year}"
     return f"{d:%d %b %Y}"
+
+def fmt_month_l(d):
+    if L() == "hi":
+        return f"{MON_HI[d.month - 1]} {d.year}"
+    if L() == "bn":
+        return f"{MON_BN[d.month - 1]} {d.year}"
+    return f"{d:%b %Y}"
 
 def daily_sky(ref):
     jd = julian_day(ref)
@@ -2604,6 +2612,42 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
     st.caption(t("ss_note"))
     if chart["time_unknown"]:
         st.caption(t("ss_unknown"))
+
+# ---------------- REPORT HELPERS (shared by Career and Marriage) ----------------
+ROLE_W = {"Yogakaraka": 1.5, "Lagna lord": 1, "Functional benefic": 0.5, "Neutral": 0,
+          "Functional malefic": -0.5}
+GROWTH, STEADY = 72, 55
+
+def month_list(start, months):
+    out = []
+    for i in range(months):
+        mm = (start.month - 1 + i) % 12 + 1
+        yy = start.year + (start.month - 1 + i) // 12
+        out.append(datetime(yy, mm, 15))
+    return out
+
+def windows_from(months):
+    wins, cur_w = [], None
+    for m in months:
+        if m["score"] >= GROWTH:
+            if cur_w is None:
+                cur_w = {"start": m["date"], "end": m["date"], "ms": [m]}
+            else:
+                cur_w["end"] = m["date"]
+                cur_w["ms"].append(m)
+        elif cur_w:
+            wins.append(cur_w)
+            cur_w = None
+    if cur_w:
+        wins.append(cur_w)
+    for w in wins:
+        w["avg"] = sum(x["score"] for x in w["ms"]) / len(w["ms"])
+    return sorted(sorted(wins, key=lambda w: -w["avg"])[:4], key=lambda w: w["start"])
+
+def months_ago_start(now, n):
+    total = now.year * 12 + now.month - 1 - n
+    return datetime(total // 12, total % 12 + 1, 1)
+
 # ---------------- CAREER REPORT ----------------
 CR = {
     "rep_ss": ("Sade Sati", "साढ़ेसाती", "সাড়েসাতি"),
@@ -2717,16 +2761,6 @@ FIELD_T = {
              "গবেষণা, কোডিং, বিশ্লেষণ, নিরাময় ও আধ্যাত্মিক কাজ"),
 }
 CAREER_HOUSES_W = {10: 2, 11: 1.5, 2: 1, 6: 1}
-ROLE_W = {"Yogakaraka": 1.5, "Lagna lord": 1, "Functional benefic": 0.5, "Neutral": 0,
-          "Functional malefic": -0.5}
-GROWTH, STEADY = 72, 55
-
-def fmt_month_l(d):
-    if L() == "hi":
-        return f"{MON_HI[d.month - 1]} {d.year}"
-    if L() == "bn":
-        return f"{MON_BN[d.month - 1]} {d.year}"
-    return f"{d:%b %Y}"
 
 def career_label(score):
     return "lbl_growth" if score >= GROWTH else "lbl_steady" if score >= STEADY else "lbl_cons"
@@ -2759,10 +2793,7 @@ def career_months(chart, start, months):
     s10, s11 = (chart["asc_sign"] + 9) % 12, (chart["asc_sign"] + 10) % 12
     links = {pl_: career_link(chart, pl_, asp) for pl_ in P}
     out = []
-    for i in range(months):
-        mm = (start.month - 1 + i) % 12 + 1
-        yy = start.year + (start.month - 1 + i) // 12
-        d = datetime(yy, mm, 15)
+    for d in month_list(start, months):
         md, ad = dasha_at(chart, d)
         jd = julian_day(d)
         js = int(sidereal_lon(jd, swe.JUPITER)[0] // 30)
@@ -2830,24 +2861,6 @@ def career_style(chart):
     job = hs(6) + 0.5 * hs(10)
     return "biz" if biz - job > 1 else "job" if job - biz > 1 else "both"
 
-def career_windows(months):
-    wins, cur_w = [], None
-    for m in months:
-        if m["score"] >= GROWTH:
-            if cur_w is None:
-                cur_w = {"start": m["date"], "end": m["date"], "ms": [m]}
-            else:
-                cur_w["end"] = m["date"]
-                cur_w["ms"].append(m)
-        elif cur_w:
-            wins.append(cur_w)
-            cur_w = None
-    if cur_w:
-        wins.append(cur_w)
-    for w in wins:
-        w["avg"] = sum(x["score"] for x in w["ms"]) / len(w["ms"])
-    return sorted(sorted(wins, key=lambda w: -w["avg"])[:4], key=lambda w: w["start"])
-
 def window_reasons(w, english=False):
     get = (lambda k, **kw: CR[k][0].format(**kw)) if english else ct
     name = (lambda p: p) if english else planet_name
@@ -2863,7 +2876,7 @@ def window_reasons(w, english=False):
         out.append(get("wr_sat"))
     return " · ".join(out)
 
-def year_rows(months):
+def year_rows(months, label_fn):
     by = {}
     for m in months:
         by.setdefault(m["date"].year, []).append(m)
@@ -2875,9 +2888,20 @@ def year_rows(months):
         best = sorted([x for x in sorted(ms, key=lambda x: -x["score"]) if x["score"] >= GROWTH][:2],
                       key=lambda x: x["date"])
         rows.append({ct("col_year"): str(y), ct("col_chapter"): ", ".join(chaps) or "-",
-                     t("col_outlook"): ct(career_label(avg)), t("col_score"): avg,
+                     t("col_outlook"): label_fn(avg), t("col_score"): avg,
                      ct("col_peak"): ", ".join(fmt_month_l(x["date"]) for x in best) or "-"})
     return rows
+
+def year_lines_en(months, label_en):
+    by = {}
+    for m in months:
+        by.setdefault(m["date"].year, []).append(m)
+    lines = []
+    for y, ms in by.items():
+        avg = round(sum(x["score"] for x in ms) / len(ms))
+        chaps = ", ".join(dict.fromkeys(f"{x['md']}-{x['ad']}" for x in ms if x["md"] and x["ad"]))
+        lines.append(f"  {y}: {avg} ({label_en(avg)}); periods {chaps}")
+    return lines
 
 def career_text(chart, an, fields, style, months, wins):
     lines = [f"Career outlook: {an['verdict']}",
@@ -2891,14 +2915,8 @@ def career_text(chart, an, fields, style, months, wins):
         l10 = lord_of(chart, 10)
         lines.append(f"D10 Lagna {SIGNS[dl]}; 10th lord {l10} in D10 house "
                      f"{(chart['planets'][l10]['vargas'][10] - dl) % 12 + 1}")
-    by = {}
-    for m in months:
-        by.setdefault(m["date"].year, []).append(m)
     lines.append("Year by year (career momentum 0-100):")
-    for y, ms in by.items():
-        avg = round(sum(x["score"] for x in ms) / len(ms))
-        chaps = ", ".join(dict.fromkeys(f"{x['md']}-{x['ad']}" for x in ms if x["md"] and x["ad"]))
-        lines.append(f"  {y}: {avg} ({CR[career_label(avg)][0]}); periods {chaps}")
+    lines += year_lines_en(months, lambda a: CR[career_label(a)][0])
     lines.append("Best windows: " + ("; ".join(f"{w['start']:%b %Y} to {w['end']:%b %Y} "
                                               f"({window_reasons(w, english=True)})" for w in wins) or "none"))
     return "\n".join(lines)
@@ -2949,10 +2967,10 @@ def career_section(chart, pname, prel, pid, uid, now):
     df = pd.DataFrame({"Score": [m["score"] for m in months]}, index=[m["date"] for m in months])
     st.line_chart(df, color="#FAC775", height=220)
     st.markdown(f"**{ct('cr_years')}**")
-    st.dataframe(year_rows(months), hide_index=True)
+    st.dataframe(year_rows(months, lambda a: ct(career_label(a))), hide_index=True)
     st.caption(ct("cr_score_note"))
 
-    wins = career_windows(months)
+    wins = windows_from(months)
     st.markdown(f"#### {ct('cr_windows_title')}")
     if not wins:
         st.caption(ct("cr_no_windows"))
@@ -2963,11 +2981,10 @@ def career_section(chart, pname, prel, pid, uid, now):
 
     with st.expander(ct("cr_past_title")):
         st.caption(ct("cr_past_note"))
-        total = now.year * 12 + now.month - 1 - 60
-        past = career_months(chart, datetime(total // 12, total % 12 + 1, 1), 60)
+        past = career_months(chart, months_ago_start(now, 60), 60)
         past = [m for m in past if m["date"] >= chart["birth_utc"]]
         if past:
-            st.dataframe(year_rows(past), hide_index=True)
+            st.dataframe(year_rows(past, lambda a: ct(career_label(a))), hide_index=True)
 
     st.markdown(f"#### {ct('cr_guide_title')}")
     rkey = f"career|{pid}|{L()}"
@@ -2997,6 +3014,8 @@ def career_section(chart, pname, prel, pid, uid, now):
             st.caption(t("resting"))
     if rkey in cache:
         st.markdown(cache[rkey])
+
+# ---------------- MARRIAGE & RELATIONSHIPS REPORT ----------------
 MR = {
     "rep_marriage": ("Marriage", "विवाह", "বিবাহ"),
     "mr_title": ("Marriage & relationships report", "विवाह और संबंध रिपोर्ट", "বিবাহ ও সম্পর্ক রিপোর্ট"),
@@ -3027,7 +3046,6 @@ MR = {
                    "in {v}.",
                    "D9 लग्न: {s}, स्वामी {p}। आपके सप्तमेश {l} D9 के {h} भाव में हैं और शुक्र {v} में हैं।",
                    "D9 লগ্ন: {s}, অধিপতি {p}। আপনার সপ্তমেশ {l} D9-এর {h} ভাবে আছেন এবং শুক্র {v} রাশিতে আছেন।"),
-    "mr_timeline_title": ("Your next 10 years", "आपके अगले 10 वर्ष", "আপনার আগামী 10 বছর"),
     "mr_month_chart": ("Monthly relationship momentum (0–100)", "मासिक संबंध गति (0–100)",
                        "মাসিক সম্পর্কের গতি (0–100)"),
     "rl_strong": ("Strong relationship window", "संबंधों के लिए प्रबल समय", "সম্পর্কের জন্য প্রবল সময়"),
@@ -3144,10 +3162,7 @@ def rel_months(chart, start, months):
     l7_sign = P[lord_of(chart, 7)]["sign"]
     links = {pl_: rel_link(chart, pl_, asp) for pl_ in P}
     out = []
-    for i in range(months):
-        mm = (start.month - 1 + i) % 12 + 1
-        yy = start.year + (start.month - 1 + i) // 12
-        d = datetime(yy, mm, 15)
+    for d in month_list(start, months):
         md, ad = dasha_at(chart, d)
         jd = julian_day(d)
         js = int(sidereal_lon(jd, swe.JUPITER)[0] // 30)
@@ -3200,24 +3215,6 @@ def rel_partner(chart):
     top = sorted(sc, key=lambda p: -sc[p])[:3]
     return [(p, why[p]) for p in top]
 
-def rel_windows(months):
-    wins, cur_w = [], None
-    for m in months:
-        if m["score"] >= GROWTH:
-            if cur_w is None:
-                cur_w = {"start": m["date"], "end": m["date"], "ms": [m]}
-            else:
-                cur_w["end"] = m["date"]
-                cur_w["ms"].append(m)
-        elif cur_w:
-            wins.append(cur_w)
-            cur_w = None
-    if cur_w:
-        wins.append(cur_w)
-    for w in wins:
-        w["avg"] = sum(x["score"] for x in w["ms"]) / len(w["ms"])
-    return sorted(sorted(wins, key=lambda w: -w["avg"])[:4], key=lambda w: w["start"])
-
 def rel_reasons(w, english=False):
     get = (lambda k, **kw: MR[k][0].format(**kw)) if english else mt
     name = (lambda p: p) if english else planet_name
@@ -3230,22 +3227,6 @@ def rel_reasons(w, english=False):
     if sum(x["jup7"] for x in w["ms"]) * 2 >= n_:
         out.append(get("wr7_jup"))
     return " · ".join(out)
-
-def rel_year_rows(months):
-    by = {}
-    for m in months:
-        by.setdefault(m["date"].year, []).append(m)
-    rows = []
-    for y, ms in by.items():
-        avg = round(sum(x["score"] for x in ms) / len(ms))
-        chaps = list(dict.fromkeys(f"{planet_name(x['md'])}–{planet_name(x['ad'])}"
-                                   for x in ms if x["md"] and x["ad"]))
-        best = sorted([x for x in sorted(ms, key=lambda x: -x["score"]) if x["score"] >= GROWTH][:2],
-                      key=lambda x: x["date"])
-        rows.append({ct("col_year"): str(y), ct("col_chapter"): ", ".join(chaps) or "-",
-                     t("col_outlook"): mt(rel_label(avg)), t("col_score"): avg,
-                     ct("col_peak"): ", ".join(fmt_month_l(x["date"]) for x in best) or "-"})
-    return rows
 
 def rel_text(chart, an, partner, status, months, wins):
     P = chart["planets"]
@@ -3264,14 +3245,8 @@ def rel_text(chart, an, partner, status, months, wins):
                      f"Venus in D9 {SIGNS[P['Venus']['vargas'][9]]}")
     lf, lm = manglik(chart)
     lines.append(f"Mars placement: {manglik_text(lf, lm)}")
-    by = {}
-    for m in months:
-        by.setdefault(m["date"].year, []).append(m)
     lines.append("Year by year (relationship momentum 0-100):")
-    for y, ms in by.items():
-        avg = round(sum(x["score"] for x in ms) / len(ms))
-        chaps = ", ".join(dict.fromkeys(f"{x['md']}-{x['ad']}" for x in ms if x["md"] and x["ad"]))
-        lines.append(f"  {y}: {avg} ({MR[rel_label(avg)][0]}); periods {chaps}")
+    lines += year_lines_en(months, lambda a: MR[rel_label(a)][0])
     lines.append("Best windows: " + ("; ".join(f"{w['start']:%b %Y} to {w['end']:%b %Y} "
                                               f"({rel_reasons(w, english=True)})" for w in wins) or "none"))
     return "\n".join(lines)
@@ -3328,15 +3303,15 @@ def marriage_section(chart, pname, prel, pid, uid, now):
     st.caption(t("manglik_caption"))
 
     months = rel_months(chart, datetime(now.year, now.month, 1), 120)
-    st.markdown(f"#### {mt('mr_timeline_title')}")
+    st.markdown(f"#### {ct('cr_timeline_title')}")
     st.caption(mt("mr_month_chart"))
     df = pd.DataFrame({"Score": [m["score"] for m in months]}, index=[m["date"] for m in months])
     st.line_chart(df, color="#FAC775", height=220)
     st.markdown(f"**{ct('cr_years')}**")
-    st.dataframe(rel_year_rows(months), hide_index=True)
+    st.dataframe(year_rows(months, lambda a: mt(rel_label(a))), hide_index=True)
     st.caption(mt("mr_score_note"))
 
-    wins = rel_windows(months)
+    wins = windows_from(months)
     st.markdown(f"#### {mt('mr_win_' + status)}")
     if not wins:
         st.caption(mt("mr_no_windows"))
@@ -3347,11 +3322,10 @@ def marriage_section(chart, pname, prel, pid, uid, now):
 
     with st.expander(ct("cr_past_title")):
         st.caption(mt("mr_past_note"))
-        total = now.year * 12 + now.month - 1 - 60
-        past = rel_months(chart, datetime(total // 12, total % 12 + 1, 1), 60)
+        past = rel_months(chart, months_ago_start(now, 60), 60)
         past = [m for m in past if m["date"] >= chart["birth_utc"] + timedelta(days=365.25 * 18)]
         if past:
-            st.dataframe(rel_year_rows(past), hide_index=True)
+            st.dataframe(year_rows(past, lambda a: mt(rel_label(a))), hide_index=True)
 
     st.markdown(f"#### {mt('mr_guide_title')}")
     kind = f"marriage_{status}"
@@ -3388,6 +3362,7 @@ def marriage_section(chart, pname, prel, pid, uid, now):
             st.caption(t("resting"))
     if rkey in cache:
         st.markdown(cache[rkey])
+
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
@@ -3860,11 +3835,14 @@ with match:
 
 # ----- REPORTS -----
 with reports:
-    rep = st.segmented_control("rep_kind", ["sade_sati", "career"], default="sade_sati", key="rep_kind",
-                               format_func=lambda k: ct("rep_ss") if k == "sade_sati" else ct("rep_career"),
-                               label_visibility="collapsed")
+    rep = st.segmented_control("rep_kind", ["sade_sati", "career", "marriage"], default="sade_sati",
+                               key="rep_kind", label_visibility="collapsed",
+                               format_func=lambda k: {"sade_sati": ct("rep_ss"), "career": ct("rep_career"),
+                                                      "marriage": mt("rep_marriage")}[k])
     if rep == "career":
         career_section(chart, pname, prel, pid, uid, now)
+    elif rep == "marriage":
+        marriage_section(chart, pname, prel, pid, uid, now)
     else:
         sade_sati_section(chart, pname, prel, pid, uid, now)
 
