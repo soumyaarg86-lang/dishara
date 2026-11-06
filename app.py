@@ -2421,21 +2421,33 @@ def runs_for(segs, targets, merge_gap_days=500):
     return runs
 
 def sade_sati_info(chart):
+    T.update({
+    "ss_all_dates": ("All Saturn dates (almanac view)", "शनि की सभी तिथियाँ (पंचांग शैली)",
+                     "শনির সব তারিখ (পঞ্জিকা অনুযায়ী)"),
+    "ss_retro_note": ("Saturn moves back and forth near sign boundaries, so a phase can come in two or three parts.",
+                      "राशि की सीमा के पास शनि आगे-पीछे चलते हैं, इसलिए कोई चरण दो या तीन हिस्सों में आ सकता है।",
+                      "রাশির সীমানার কাছে শনি সামনে-পিছনে চলেন, তাই একটি পর্যায় দুই বা তিন ভাগে আসতে পারে।"),
+    "col_phase": ("Phase", "चरण", "পর্যায়"),
+})
+
+ONE_DAY = timedelta(days=1)
+
+def sade_sati_info(chart):
     m = chart["planets"]["Moon"]["sign"]
     segs = saturn_segments(chart)
     runs = runs_for(segs, {(m - 1) % 12, m, (m + 1) % 12})
     for r in runs:
         r["phases"] = []
         for k, sign in enumerate([(m - 1) % 12, m, (m + 1) % 12]):
-            ss = [(a, b) for s, a, b in r["segs"] if s == sign]
-            if ss:
-                r["phases"].append({"n": k, "sign": sign, "start": min(a for a, _ in ss),
-                                    "end": max(b for _, b in ss)})
+            rng = [(a, b) for s, a, b in r["segs"] if s == sign]
+            if rng:
+                r["phases"].append({"n": k, "sign": sign, "ranges": rng,
+                                    "start": rng[0][0], "end": rng[-1][1]})
     dhaiya = []
     for kind, off in (("dh4", 3), ("dh8", 7)):
-        for r in runs_for(segs, {(m + off) % 12}):
-            r["kind"] = kind
-            dhaiya.append(r)
+        for s, a, b in segs:
+            if s == (m + off) % 12:
+                dhaiya.append({"kind": kind, "start": a, "end": b})
     dhaiya.sort(key=lambda r: r["start"])
     return {"moon": m, "runs": runs, "dhaiya": dhaiya}
 
@@ -2472,13 +2484,14 @@ def sade_sati_text(chart, info, now):
     for r in info["runs"]:
         status = ("CURRENT" if r["start"] <= now < r["end"] else
                   "completed" if r["end"] <= now else "upcoming")
-        lines.append(f"Sade Sati {r['start']:%d %b %Y} to {r['end']:%d %b %Y} ({status})")
+        lines.append(f"Sade Sati {r['start']:%d %b %Y} to {(r['end'] - ONE_DAY):%d %b %Y} ({status})")
         if status != "completed":
             for ph in r["phases"]:
                 md, ad = dasha_at(chart, ph["start"])
                 pts = f", Saturn Ashtakavarga {av['bav']['Saturn'][ph['sign']]}/8" if av else ""
-                lines.append(f"  Phase {ph['n'] + 1} (Saturn in {SIGNS[ph['sign']]}): "
-                             f"{ph['start']:%d %b %Y} to {ph['end']:%d %b %Y}{pts}; dasha then {md}-{ad}")
+                spans = "; ".join(f"{a:%d %b %Y} to {(b - ONE_DAY):%d %b %Y}" for a, b in ph["ranges"])
+                lines.append(f"  Phase {ph['n'] + 1} (Saturn in {SIGNS[ph['sign']]}): {spans}{pts}; "
+                             f"dasha at start {md}-{ad}")
     sat = chart["planets"]["Saturn"]
     lines.append(f"Saturn's role for this Lagna: {chart['roles']['Saturn']}; natal Saturn in "
                  f"{SIGNS[sat['sign']]} {sat['dignity']}".strip())
@@ -2495,14 +2508,16 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
     focus = cur_run or next_run
     cur_ph = None
     if cur_run:
-        cur_ph = next((p for p in cur_run["phases"] if p["start"] <= now < p["end"]), cur_run["phases"][0])
+        cur_ph = next((p for p in cur_run["phases"] if any(a <= now < b for a, b in p["ranges"])),
+                      cur_run["phases"][0])
         pct = int(100 * (now - cur_run["start"]) / (cur_run["end"] - cur_run["start"]))
         head = t("ss_now", phase=pick(SS_PHASE_T[cur_ph["n"]]))
-        sub = t("ss_runs", a=fmt_date_l(cur_run["start"]), b=fmt_date_l(cur_run["end"]))
+        sub = t("ss_runs", a=fmt_date_l(cur_run["start"]), b=fmt_date_l(cur_run["end"] - ONE_DAY))
         bar = f'<div class="bar"><div style="width:{pct}%"></div></div>'
     else:
         head = t("ss_not")
-        sub = t("ss_next", a=fmt_date_l(next_run["start"]), b=fmt_date_l(next_run["end"])) if next_run else ""
+        sub = (t("ss_next", a=fmt_date_l(next_run["start"]), b=fmt_date_l(next_run["end"] - ONE_DAY))
+               if next_run else "")
         bar = ""
     st.markdown(f"<div class='card'><p class='muted'>{t('ss_moon_line', s=sign_name(m))}</p>"
                 f"<p class='big'>{head}</p><p class='muted'>{sub}</p>{bar}</div>", unsafe_allow_html=True)
@@ -2521,12 +2536,21 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
             md, ad = dasha_at(chart, now if active else ph["start"])
             ds = f"{planet_name(md)}–{planet_name(ad)}" if md and ad else (planet_name(md) if md else "")
             dline = f"<p class='muted'>{t('ss_dasha', p=ds)}</p>" if ds else ""
+            spans = "<br>".join(f"{fmt_date_l(a)} – {fmt_date_l(b - ONE_DAY)}" for a, b in ph["ranges"])
             title = f"{pick(SS_PHASE_T[ph['n']])} · {t('ss_saturn_in', s=sign_name(ph['sign']))}"
             st.markdown(f"<div class='card' style='{border}'>"
                         f"<p class='gold' style='margin:0;font-weight:500'>{title}</p>"
-                        f"<p class='muted'>{fmt_date_l(ph['start'])} – {fmt_date_l(ph['end'])}</p>"
+                        f"<p class='muted'>{spans}</p>"
                         f"<p style='margin:8px 0 0'>{pick(SS_MEAN_T[ph['n']])}</p>{pts}{dline}</div>",
                         unsafe_allow_html=True)
+        st.caption(t("ss_retro_note"))
+        with st.expander(t("ss_all_dates")):
+            rows = []
+            for s, a, b in focus["segs"]:
+                k = [(m - 1) % 12, m, (m + 1) % 12].index(s)
+                rows.append({t("col_phase"): pick(SS_PHASE_T[k]), t("col_sign"): sign_name(s),
+                             t("col_from"): fmt_date_l(a), t("col_to"): fmt_date_l(b - ONE_DAY)})
+            st.dataframe(rows, hide_index=True)
 
     st.markdown(f"#### {t('ss_factors_title')}")
     for f_ in ss_easing(chart, m):
@@ -2537,17 +2561,18 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
     for r in info["runs"]:
         status = (t("st_now") if r["start"] <= now < r["end"] else
                   t("st_past") if r["end"] <= now else t("st_future"))
-        rows.append({t("col_from"): fmt_date_l(r["start"]), t("col_to"): fmt_date_l(r["end"]),
+        rows.append({t("col_from"): fmt_date_l(r["start"]), t("col_to"): fmt_date_l(r["end"] - ONE_DAY),
                      t("col_status"): status})
     st.dataframe(rows, hide_index=True)
 
     st.markdown(f"#### {t('ss_dhaiya_title')}")
     st.caption(t("ss_dhaiya_note"))
     drows = []
-    for r in [r for r in info["dhaiya"] if r["end"] > now][:4]:
+    for r in [r for r in info["dhaiya"] if r["end"] > now][:6]:
         status = t("st_now") if r["start"] <= now < r["end"] else t("st_future")
-        drows.append({t("col_type"): t(r["kind"]), t("col_from"): fmt_date_l(r["start"]),
-                      t("col_to"): fmt_date_l(r["end"]), t("col_status"): status})
+        drows.append({t("col_type"): t(r["kind"]), t("col_sign"): sign_name((m + (3 if r["kind"] == "dh4" else 7)) % 12),
+                      t("col_from"): fmt_date_l(r["start"]), t("col_to"): fmt_date_l(r["end"] - ONE_DAY),
+                      t("col_status"): status})
     if drows:
         st.dataframe(drows, hide_index=True)
 
@@ -2570,11 +2595,11 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
                   f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
                   f"Write a warm, practical guide with bold headings (translated into the reply language): "
                   f"Your season at a glance (2-3 lines: where they are now, with dates), Phase by phase (one short "
-                  f"paragraph per phase of the current or next Sade Sati, using its dates, Saturn's Ashtakavarga "
-                  f"points and the dasha running then), Your strengths in this season (use the easing factors), "
-                  f"What you can do (4 practical, free steps). Frame Sade Sati as a season of responsibility, "
-                  f"maturity and growth. No fear, no gemstones or paid rituals, and no predictions of illness, "
-                  f"loss or death. Under 380 words.")
+                  f"paragraph per phase of the current or next Sade Sati, using its exact date ranges, Saturn's "
+                  f"Ashtakavarga points and the dasha running then; mention when Saturn briefly moves back into a "
+                  f"sign), Your strengths in this season (use the easing factors), What you can do (4 practical, "
+                  f"free steps). Frame Sade Sati as a season of responsibility, maturity and growth. No fear, no "
+                  f"gemstones or paid rituals, and no predictions of illness, loss or death. Under 380 words.")
         with st.spinner(t("ss_writing")):
             text = ask_dishara(prompt, pname, prel)
         if text:
