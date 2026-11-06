@@ -130,6 +130,7 @@ T = {
     "tab_ask": ("Ask Dishara", "दिशारा से पूछें", "দিশারাকে জিজ্ঞাসা"),
     "tab_kundali": ("Kundali", "कुंडली", "কুণ্ডলী"),
     "tab_match": ("Match Making", "कुंडली मिलान", "কোষ্ঠী মিলন"),
+    "tab_reports": ("Reports", "रिपोर्ट", "রিপোর্ট"),
     "tab_share": ("Share", "शेयर", "শেয়ার"),
     "todays_energy": ("Today's energy · {date}", "आज की ऊर्जा · {date}", "আজকের শক্তি · {date}"),
     "why_score": ("Why: the Moon is in {nak}, giving {name} a {tara} tara ({tara_word}). It's in the {ch} sign "
@@ -245,6 +246,92 @@ T = {
     "sh_wa_msg": ("Made with Dishara. Get your free daily guide: {url}",
                   "दिशारा से बनाया गया। अपना मुफ़्त दैनिक मार्गदर्शन पाएँ: {url}",
                   "দিশারা দিয়ে তৈরি। আপনার বিনামূল্যে দৈনিক নির্দেশিকা পান: {url}"),
+    "ss_title": ("Sade Sati: your season of growth", "साढ़ेसाती: आपके विकास का समय", "সাড়েসাতি: আপনার বিকাশের সময়"),
+    "ss_intro": ("Sade Sati is the roughly 7½ years when Saturn moves through the sign before your Moon sign, your "
+                 "Moon sign and the sign after it. Traditionally it's a time of responsibility, maturity and lasting "
+                 "growth, not something to fear.",
+                 "साढ़ेसाती लगभग साढ़े सात साल का वह समय है जब शनि आपकी चंद्र राशि से पहले की राशि, आपकी चंद्र राशि और "
+                 "उसके बाद की राशि से गुज़रते हैं। परंपरागत रूप से यह ज़िम्मेदारी, परिपक्वता और स्थायी विकास का समय है, "
+                 "डरने की कोई बात नहीं।",
+                 "সাড়েসাতি হলো প্রায় সাড়ে সাত বছরের সেই সময়, যখন শনি আপনার চন্দ্র রাশির আগের রাশি, আপনার চন্দ্র রাশি "
+                 "ও তার পরের রাশি দিয়ে যান। ঐতিহ্যগতভাবে এটি দায়িত্ব, পরিণতি ও স্থায়ী বিকাশের সময়, ভয়ের কিছু নয়।"),
+    "ss_moon_line": ("Your Moon sign: {s}", "आपकी चंद्र राशि: {s}", "আপনার চন্দ্র রাশি: {s}"),
+    "ss_now": ("You're in Sade Sati now · {phase}", "आप अभी साढ़ेसाती में हैं · {phase}",
+               "আপনি এখন সাড়েসাতিতে আছেন · {phase}"),
+    "ss_not": ("You're not in Sade Sati now", "आप अभी साढ़ेसाती में नहीं हैं", "আপনি এখন সাড়েসাতিতে নেই"),
+    "ss_runs": ("From {a} to {b}", "{a} से {b} तक", "{a} থেকে {b} পর্যন্ত"),
+    "ss_next": ("Next Sade Sati: {a} to {b}", "अगली साढ़ेसाती: {a} से {b} तक", "পরবর্তী সাড়েসাতি: {a} থেকে {b} পর্যন্ত"),
+    "ss_phases_title": ("The three phases", "तीन चरण", "তিনটি পর্যায়"),
+    "ss_saturn_in": ("Saturn in {s}", "शनि {s} में", "শনি {s} রাশিতে"),
+    "ss_points": ("Saturn's Ashtakavarga points in this sign: {p} of 8 · {w}",
+                  "इस राशि में शनि के अष्टकवर्ग अंक: 8 में से {p} · {w}",
+                  "এই রাশিতে শনির অষ্টকবর্গ বিন্দু: 8-এর মধ্যে {p} · {w}"),
+    "ss_w_light": ("lighter", "हल्का", "হালকা"),
+    "ss_w_steady": ("steady", "सामान्य", "স্থির"),
+    "ss_w_patient": ("asks for patience", "धैर्य चाहिए", "ধৈর্য প্রয়োজন"),
+    "ss_dasha": ("Life chapter running then: {p}", "उस समय चल रही दशा: {p}", "তখন চলমান দশা: {p}"),
+    "ss_factors_title": ("What makes this season easier for you", "आपके लिए यह समय किन बातों से आसान होता है",
+                         "কী কারণে এই সময় আপনার জন্য সহজ হয়"),
+    "ss_f_role": ("Saturn is your {role}, so this season tends to build lasting results.",
+                  "शनि आपके लिए {role} हैं, इसलिए यह समय स्थायी परिणाम बनाने वाला होता है।",
+                  "শনি আপনার {role}, তাই এই সময় সাধারণত স্থায়ী ফল গড়ে তোলে।"),
+    "ss_f_strong": ("Saturn is {dig} in your chart, which gives it strength and fairness.",
+                    "आपकी कुंडली में शनि {dig} हैं, जिससे उन्हें बल और न्यायप्रियता मिलती है।",
+                    "আপনার কুণ্ডলীতে শনি {dig}, যা তাঁকে শক্তি ও ন্যায়পরায়ণতা দেয়।"),
+    "ss_f_friend": ("Your Moon sign's lord, {lord}, is friendly with Saturn.",
+                    "आपकी चंद्र राशि के स्वामी {lord} शनि के मित्र हैं।",
+                    "আপনার চন্দ্র রাশির অধিপতি {lord} শনির বন্ধু।"),
+    "ss_f_own": ("Your Moon sign is ruled by Saturn itself, so it treats you as its own.",
+                 "आपकी चंद्र राशि के स्वामी स्वयं शनि हैं, इसलिए वे आपको अपना मानते हैं।",
+                 "আপনার চন্দ্র রাশির অধিপতি স্বয়ং শনি, তাই তিনি আপনাকে আপন মনে করেন।"),
+    "ss_f_jup": ("Jupiter supports your natal Moon by conjunction or aspect, a classic protective factor.",
+                 "गुरु युति या दृष्टि से आपके जन्म चंद्र को सहारा देते हैं, जो एक पारंपरिक रक्षक योग है।",
+                 "বৃহস্পতি যুতি বা দৃষ্টির মাধ্যমে আপনার জন্মচন্দ্রকে সমর্থন করেন, যা একটি প্রচলিত রক্ষাকারী যোগ।"),
+    "ss_f_none": ("Steady routines and patience are your best allies in this season.",
+                  "इस समय नियमित दिनचर्या और धैर्य आपके सबसे अच्छे साथी हैं।",
+                  "এই সময়ে নিয়মিত রুটিন ও ধৈর্যই আপনার সবচেয়ে বড় সঙ্গী।"),
+    "ss_life_title": ("Your Sade Sati periods in this lifetime", "जीवन भर की साढ़ेसाती", "জীবনের সাড়েসাতি পর্ব"),
+    "ss_all_dates": ("All Saturn dates (almanac view)", "शनि की सभी तिथियाँ (पंचांग शैली)",
+                     "শনির সব তারিখ (পঞ্জিকা অনুযায়ী)"),
+    "ss_retro_note": ("Saturn moves back and forth near sign boundaries, so a phase can come in two or three parts.",
+                      "राशि की सीमा के पास शनि आगे-पीछे चलते हैं, इसलिए कोई चरण दो या तीन हिस्सों में आ सकता है।",
+                      "রাশির সীমানার কাছে শনি সামনে-পিছনে চলেন, তাই একটি পর্যায় দুই বা তিন ভাগে আসতে পারে।"),
+    "col_phase": ("Phase", "चरण", "পর্যায়"),
+    "col_from": ("From", "से", "থেকে"),
+    "col_to": ("To", "तक", "পর্যন্ত"),
+    "col_status": ("Status", "स्थिति", "অবস্থা"),
+    "col_type": ("Type", "प्रकार", "ধরন"),
+    "st_past": ("Completed", "पूर्ण", "সম্পন্ন"),
+    "st_now": ("Now", "अभी", "এখন"),
+    "st_future": ("Upcoming", "आगामी", "আসন্ন"),
+    "ss_dhaiya_title": ("Dhaiya: Saturn's 2½-year seasons", "ढैय्या: शनि का ढाई साल का प्रभाव", "আড়াই বছরের শনি (ঢাইয়া)"),
+    "ss_dhaiya_note": ("When Saturn passes the 4th or 8th sign from your Moon: a shorter season of adjustment at home "
+                       "or within.",
+                       "जब शनि आपकी चंद्र राशि से चौथी या आठवीं राशि से गुज़रते हैं: घर या मन में समायोजन का एक छोटा समय।",
+                       "যখন শনি আপনার চন্দ্র রাশি থেকে চতুর্থ বা অষ্টম রাশি দিয়ে যান: ঘরে বা মনে মানিয়ে নেওয়ার একটি ছোট সময়।"),
+    "dh4": ("4th from Moon", "चंद्र से चौथा", "চন্দ্র থেকে চতুর্থ"),
+    "dh8": ("8th from Moon", "चंद्र से आठवाँ", "চন্দ্র থেকে অষ্টম"),
+    "ss_rem_title": ("Simple, free practices for this season", "इस समय के लिए सरल, निःशुल्क उपाय",
+                     "এই সময়ের জন্য সহজ, বিনামূল্যের অভ্যাস"),
+    "ss_rem_note": ("No gemstones or paid rituals are needed. Consistency matters more than anything.",
+                    "किसी रत्न या सशुल्क अनुष्ठान की ज़रूरत नहीं। निरंतरता सबसे ज़्यादा मायने रखती है।",
+                    "কোনো রত্ন বা অর্থের বিনিময়ে আচার-অনুষ্ঠানের প্রয়োজন নেই। ধারাবাহিকতাই সবচেয়ে গুরুত্বপূর্ণ।"),
+    "ss_guide_title": ("Your personal guide", "आपका व्यक्तिगत मार्गदर्शन", "আপনার ব্যক্তিগত নির্দেশিকা"),
+    "ss_guide_btn": ("Write my personal Sade Sati guide", "मेरा व्यक्तिगत साढ़ेसाती मार्गदर्शन लिखें",
+                     "আমার ব্যক্তিগত সাড়েসাতি নির্দেশিকা লিখুন"),
+    "ss_guide_refresh": ("Rewrite my guide", "मार्गदर्शन फिर से लिखें", "নির্দেশিকা আবার লিখুন"),
+    "ss_writing": ("Dishara is writing your guide...", "दिशारा आपका मार्गदर्शन लिख रही है...",
+                   "দিশারা আপনার নির্দেশিকা লিখছে..."),
+    "ss_note": ("Dates come from Saturn's exact movement (Lahiri ayanamsha) and may differ by a few days from other "
+                "almanacs.",
+                "तिथियाँ शनि की सटीक गति (लाहिड़ी अयनांश) से निकाली गई हैं और अन्य पंचांगों से कुछ दिन अलग हो सकती हैं।",
+                "তারিখগুলি শনির সঠিক গতি (লাহিড়ী অয়নাংশ) থেকে গণনা করা এবং অন্য পঞ্জিকা থেকে কয়েক দিন আলাদা হতে পারে।"),
+    "ss_unknown": ("Birth time unknown: your Moon sign is still reliable unless the Moon changed signs on your birth "
+                   "day. Ashtakavarga points need the exact time, so they aren't shown.",
+                   "जन्म समय अज्ञात: आपकी चंद्र राशि फिर भी विश्वसनीय है, जब तक कि जन्म के दिन चंद्रमा ने राशि न बदली "
+                   "हो। अष्टकवर्ग अंकों के लिए सही समय चाहिए, इसलिए वे नहीं दिखाए गए हैं।",
+                   "জন্মসময় অজানা: জন্মের দিন চন্দ্র রাশি না বদলালে আপনার চন্দ্র রাশি নির্ভরযোগ্য। অষ্টকবর্গ বিন্দুর "
+                   "জন্য সঠিক সময় লাগে, তাই সেগুলি দেখানো হয়নি।"),
     "new_conv": ("New conversation", "नई बातचीत", "নতুন কথোপকথন"),
     "past_conv": ("Open a past conversation ({n})", "पिछली बातचीत खोलें ({n})", "আগের কথোপকথন খুলুন ({n})"),
     "ask_intro": ("Ask anything about {name}'s chart: career, relationships, timing, strengths...",
@@ -364,92 +451,7 @@ T = {
                 "मैं थोड़ा विश्राम कर रही हूँ। कृपया एक मिनट बाद फिर पूछें।",
                 "আমি একটু বিশ্রাম নিচ্ছি। অনুগ্রহ করে এক মিনিট পরে আবার জিজ্ঞাসা করুন।"),
 }
-T.update({
-    "tab_reports": ("Reports", "रिपोर्ट", "রিপোর্ট"),
-    "ss_title": ("Sade Sati: your season of growth", "साढ़ेसाती: आपके विकास का समय", "সাড়েসাতি: আপনার বিকাশের সময়"),
-    "ss_intro": ("Sade Sati is the roughly 7½ years when Saturn moves through the sign before your Moon sign, your "
-                 "Moon sign and the sign after it. Traditionally it's a time of responsibility, maturity and lasting "
-                 "growth, not something to fear.",
-                 "साढ़ेसाती लगभग साढ़े सात साल का वह समय है जब शनि आपकी चंद्र राशि से पहले की राशि, आपकी चंद्र राशि और "
-                 "उसके बाद की राशि से गुज़रते हैं। परंपरागत रूप से यह ज़िम्मेदारी, परिपक्वता और स्थायी विकास का समय है, "
-                 "डरने की कोई बात नहीं।",
-                 "সাড়েসাতি হলো প্রায় সাড়ে সাত বছরের সেই সময়, যখন শনি আপনার চন্দ্র রাশির আগের রাশি, আপনার চন্দ্র রাশি "
-                 "ও তার পরের রাশি দিয়ে যান। ঐতিহ্যগতভাবে এটি দায়িত্ব, পরিণতি ও স্থায়ী বিকাশের সময়, ভয়ের কিছু নয়।"),
-    "ss_moon_line": ("Your Moon sign: {s}", "आपकी चंद्र राशि: {s}", "আপনার চন্দ্র রাশি: {s}"),
-    "ss_now": ("You're in Sade Sati now · {phase}", "आप अभी साढ़ेसाती में हैं · {phase}",
-               "আপনি এখন সাড়েসাতিতে আছেন · {phase}"),
-    "ss_not": ("You're not in Sade Sati now", "आप अभी साढ़ेसाती में नहीं हैं", "আপনি এখন সাড়েসাতিতে নেই"),
-    "ss_runs": ("From {a} to {b}", "{a} से {b} तक", "{a} থেকে {b} পর্যন্ত"),
-    "ss_next": ("Next Sade Sati: {a} to {b}", "अगली साढ़ेसाती: {a} से {b} तक", "পরবর্তী সাড়েসাতি: {a} থেকে {b} পর্যন্ত"),
-    "ss_phases_title": ("The three phases", "तीन चरण", "তিনটি পর্যায়"),
-    "ss_saturn_in": ("Saturn in {s}", "शनि {s} में", "শনি {s} রাশিতে"),
-    "ss_points": ("Saturn's Ashtakavarga points in this sign: {p} of 8 · {w}",
-                  "इस राशि में शनि के अष्टकवर्ग अंक: 8 में से {p} · {w}",
-                  "এই রাশিতে শনির অষ্টকবর্গ বিন্দু: 8-এর মধ্যে {p} · {w}"),
-    "ss_w_light": ("lighter", "हल्का", "হালকা"),
-    "ss_w_steady": ("steady", "सामान्य", "স্থির"),
-    "ss_w_patient": ("asks for patience", "धैर्य चाहिए", "ধৈর্য প্রয়োজন"),
-    "ss_dasha": ("Life chapter running then: {p}", "उस समय चल रही दशा: {p}", "তখন চলমান দশা: {p}"),
-    "ss_factors_title": ("What makes this season easier for you", "आपके लिए यह समय किन बातों से आसान होता है",
-                         "কী কারণে এই সময় আপনার জন্য সহজ হয়"),
-    "ss_f_role": ("Saturn is your {role}, so this season tends to build lasting results.",
-                  "शनि आपके लिए {role} हैं, इसलिए यह समय स्थायी परिणाम बनाने वाला होता है।",
-                  "শনি আপনার {role}, তাই এই সময় সাধারণত স্থায়ী ফল গড়ে তোলে।"),
-    "ss_f_strong": ("Saturn is {dig} in your chart, which gives it strength and fairness.",
-                    "आपकी कुंडली में शनि {dig} हैं, जिससे उन्हें बल और न्यायप्रियता मिलती है।",
-                    "আপনার কুণ্ডলীতে শনি {dig}, যা তাঁকে শক্তি ও ন্যায়পরায়ণতা দেয়।"),
-    "ss_f_friend": ("Your Moon sign's lord, {lord}, is friendly with Saturn.",
-                    "आपकी चंद्र राशि के स्वामी {lord} शनि के मित्र हैं।",
-                    "আপনার চন্দ্র রাশির অধিপতি {lord} শনির বন্ধু।"),
-    "ss_f_own": ("Your Moon sign is ruled by Saturn itself, so it treats you as its own.",
-                 "आपकी चंद्र राशि के स्वामी स्वयं शनि हैं, इसलिए वे आपको अपना मानते हैं।",
-                 "আপনার চন্দ্র রাশির অধিপতি স্বয়ং শনি, তাই তিনি আপনাকে আপন মনে করেন।"),
-    "ss_f_jup": ("Jupiter supports your natal Moon by conjunction or aspect, a classic protective factor.",
-                 "गुरु युति या दृष्टि से आपके जन्म चंद्र को सहारा देते हैं, जो एक पारंपरिक रक्षक योग है।",
-                 "বৃহস্পতি যুতি বা দৃষ্টির মাধ্যমে আপনার জন্মচন্দ্রকে সমর্থন করেন, যা একটি প্রচলিত রক্ষাকারী যোগ।"),
-    "ss_f_none": ("Steady routines and patience are your best allies in this season.",
-                  "इस समय नियमित दिनचर्या और धैर्य आपके सबसे अच्छे साथी हैं।",
-                  "এই সময়ে নিয়মিত রুটিন ও ধৈর্যই আপনার সবচেয়ে বড় সঙ্গী।"),
-    "ss_life_title": ("Your Sade Sati periods in this lifetime", "जीवन भर की साढ़ेसाती", "জীবনের সাড়েসাতি পর্ব"),
-    "col_from": ("From", "से", "থেকে"),
-    "col_to": ("To", "तक", "পর্যন্ত"),
-    "col_status": ("Status", "स्थिति", "অবস্থা"),
-    "col_type": ("Type", "प्रकार", "ধরন"),
-    "st_past": ("Completed", "पूर्ण", "সম্পন্ন"),
-    "st_now": ("Now", "अभी", "এখন"),
-    "st_future": ("Upcoming", "आगामी", "আসন্ন"),
-    "ss_dhaiya_title": ("Dhaiya: Saturn's 2½-year seasons", "ढैय्या: शनि का ढाई साल का प्रभाव", "আড়াই বছরের শনি (ঢাইয়া)"),
-    "ss_dhaiya_note": ("When Saturn passes the 4th or 8th sign from your Moon: a shorter season of adjustment at home "
-                       "or within.",
-                       "जब शनि आपकी चंद्र राशि से चौथी या आठवीं राशि से गुज़रते हैं: घर या मन में समायोजन का एक छोटा समय।",
-                       "যখন শনি আপনার চন্দ্র রাশি থেকে চতুর্থ বা অষ্টম রাশি দিয়ে যান: ঘরে বা মনে মানিয়ে নেওয়ার একটি ছোট সময়।"),
-    "dh4": ("4th from Moon", "चंद्र से चौथा", "চন্দ্র থেকে চতুর্থ"),
-    "dh8": ("8th from Moon", "चंद्र से आठवाँ", "চন্দ্র থেকে অষ্টম"),
-    "ss_rem_title": ("Simple, free practices for this season", "इस समय के लिए सरल, निःशुल्क उपाय",
-                     "এই সময়ের জন্য সহজ, বিনামূল্যের অভ্যাস"),
-    "ss_rem_note": ("No gemstones or paid rituals are needed. Consistency matters more than anything.",
-                    "किसी रत्न या सशुल्क अनुष्ठान की ज़रूरत नहीं। निरंतरता सबसे ज़्यादा मायने रखती है।",
-                    "কোনো রত্ন বা অর্থের বিনিময়ে আচার-অনুষ্ঠানের প্রয়োজন নেই। ধারাবাহিকতাই সবচেয়ে গুরুত্বপূর্ণ।"),
-    "ss_guide_title": ("Your personal guide", "आपका व्यक्तिगत मार्गदर्शन", "আপনার ব্যক্তিগত নির্দেশিকা"),
-    "ss_guide_btn": ("Write my personal Sade Sati guide", "मेरा व्यक्तिगत साढ़ेसाती मार्गदर्शन लिखें",
-                     "আমার ব্যক্তিগত সাড়েসাতি নির্দেশিকা লিখুন"),
-    "ss_guide_refresh": ("Rewrite my guide", "मार्गदर्शन फिर से लिखें", "নির্দেশিকা আবার লিখুন"),
-    "ss_writing": ("Dishara is writing your guide...", "दिशारा आपका मार्गदर्शन लिख रही है...",
-                   "দিশারা আপনার নির্দেশিকা লিখছে..."),
-    "ss_note": ("Dates come from Saturn's exact movement (Lahiri ayanamsha) and may differ by a few days from other "
-                "almanacs. Saturn sometimes moves back briefly, so neighbouring phases can overlap.",
-                "तिथियाँ शनि की सटीक गति (लाहिड़ी अयनांश) से निकाली गई हैं और अन्य पंचांगों से कुछ दिन अलग हो सकती हैं। "
-                "शनि कभी-कभी थोड़े समय के लिए वक्री होकर पीछे जाते हैं, इसलिए पास के चरण आपस में मिल सकते हैं।",
-                "তারিখগুলি শনির সঠিক গতি (লাহিড়ী অয়নাংশ) থেকে গণনা করা এবং অন্য পঞ্জিকা থেকে কয়েক দিন আলাদা হতে "
-                "পারে। শনি মাঝে মাঝে অল্প সময়ের জন্য বক্রী হয়ে পিছিয়ে যান, তাই পাশাপাশি পর্যায় একে অপরের সঙ্গে মিশে "
-                "যেতে পারে।"),
-    "ss_unknown": ("Birth time unknown: your Moon sign is still reliable unless the Moon changed signs on your birth "
-                   "day. Ashtakavarga points need the exact time, so they aren't shown.",
-                   "जन्म समय अज्ञात: आपकी चंद्र राशि फिर भी विश्वसनीय है, जब तक कि जन्म के दिन चंद्रमा ने राशि न बदली "
-                   "हो। अष्टकवर्ग अंकों के लिए सही समय चाहिए, इसलिए वे नहीं दिखाए गए हैं।",
-                   "জন্মসময় অজানা: জন্মের দিন চন্দ্র রাশি না বদলালে আপনার চন্দ্র রাশি নির্ভরযোগ্য। অষ্টকবর্গ বিন্দুর "
-                   "জন্য সঠিক সময় লাগে, তাই সেগুলি দেখানো হয়নি।"),
-})
+
 def t(key, **kw):
     s = pick(T[key])
     return s.format(**kw) if kw else s
@@ -623,10 +625,10 @@ Dishara ("we") is a Vedic astrology guidance app. This policy explains what we c
 **What we collect**
 - Your email address, when you create an account.
 - Birth details you enter for yourself or others: name, relationship, birth date, birth time and birth place.
-- Your questions to Dishara and the answers it gives, your daily tips, and your language preference.
+- Your questions to Dishara and the answers it gives, your daily tips, reports, and your language preference.
 
 **How we use it**
-- To calculate birth charts and give you personalised guidance, daily tips and compatibility readings.
+- To calculate birth charts and give you personalised guidance, daily tips, reports and compatibility readings.
 - To remember your past conversations so guidance stays consistent.
 - We do not sell your data or use it for advertising.
 
@@ -644,7 +646,7 @@ Your data is stored with Supabase (database) and the app is hosted on Streamlit 
 Access is restricted so that each signed-in user can only see their own data.
 
 **Your choices and rights**
-You can edit or delete any chart in the app; deleting a chart also deletes its conversations.
+You can edit or delete any chart in the app; deleting a chart also deletes its conversations and reports.
 To access, correct or delete all your data, email us at your-email@gmail.com and we will act within 30 days.
 
 **Important**
@@ -744,6 +746,21 @@ def save_daily_cards(day_iso, lang, content):
     except Exception:
         pass
 
+def get_report(uid, pid, kind, lang):
+    try:
+        rows = (db().table("reports").select("content").eq("user_id", uid).eq("profile_id", pid)
+                .eq("kind", kind).eq("lang", lang).limit(1).execute().data)
+        return rows[0]["content"] if rows else None
+    except Exception:
+        return None
+
+def save_report(uid, pid, kind, lang, content):
+    try:
+        db().table("reports").upsert({"user_id": uid, "profile_id": pid, "kind": kind, "lang": lang,
+                                      "content": content}, on_conflict="profile_id,kind,lang").execute()
+    except Exception:
+        pass
+
 # ---------------- ASTRO DATA ----------------
 SIGNS = ["Mesha (Aries)", "Vrishabha (Taurus)", "Mithuna (Gemini)", "Karka (Cancer)",
          "Simha (Leo)", "Kanya (Virgo)", "Tula (Libra)", "Vrishchika (Scorpio)",
@@ -839,6 +856,7 @@ NAK_LEN = 360 / 27
 swe.set_sid_mode(swe.SIDM_LAHIRI)
 FLAGS = swe.FLG_MOSEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
 IST = 5.5
+ONE_DAY = timedelta(days=1)
 
 # ---------------- ASTRO CALCULATIONS ----------------
 def ordinal(n):
@@ -1627,7 +1645,7 @@ HOW TO ANSWER (default):
   headings into the reply language.
 - Be specific to THIS chart. No generic Lagna or sun-sign personality text unless asked.
 - Explain any Sanskrit term in a few words. Under 250 words.
-- If the request says DAILY TIPS or COMPATIBILITY, follow the format given in the request instead.
+- If the request says DAILY TIPS, COMPATIBILITY or SADE SATI, follow the format given in the request instead.
 
 RULES:
 1. Use ONLY the data provided. Never invent positions, yogas, roles, scores or dates.
@@ -1951,6 +1969,13 @@ def date_line(day, lang):
     if lang == "hi":
         return f"{VARA_T[wd][1]}, {day.day} {MON_HI[day.month - 1]}"
     return f"{VARA_T[wd][2]}, {day.day} {MON_BN[day.month - 1]}"
+
+def fmt_date_l(d):
+    if L() == "hi":
+        return f"{d.day} {MON_HI[d.month - 1]} {d.year}"
+    if L() == "bn":
+        return f"{d.day} {MON_BN[d.month - 1]} {d.year}"
+    return f"{d:%d %b %Y}"
 
 def daily_sky(ref):
     jd = julian_day(ref)
@@ -2313,6 +2338,7 @@ def share_tab(chart, pname, today, day_ref):
         st.caption(t("sh_hint"))
         if content is None:
             st.caption(t("sh_fresh"))
+
 # ---------------- SADE SATI REPORT ----------------
 SS_PHASE_T = [("Phase 1 · Rising", "पहला चरण · आरंभ", "প্রথম পর্যায় · শুরু"),
               ("Phase 2 · Peak", "दूसरा चरण · शिखर", "দ্বিতীয় পর্যায় · শীর্ষ"),
@@ -2357,30 +2383,7 @@ SS_REMEDIES_T = [
      "সামর্থ্য অনুযায়ী প্রয়োজনে থাকা মানুষকে খাবার, বস্ত্র বা সময় দিন।"),
 ]
 
-def get_report(uid, pid, kind, lang):
-    try:
-        rows = (db().table("reports").select("content").eq("user_id", uid).eq("profile_id", pid)
-                .eq("kind", kind).eq("lang", lang).limit(1).execute().data)
-        return rows[0]["content"] if rows else None
-    except Exception:
-        return None
-
-def save_report(uid, pid, kind, lang, content):
-    try:
-        db().table("reports").upsert({"user_id": uid, "profile_id": pid, "kind": kind, "lang": lang,
-                                      "content": content}, on_conflict="profile_id,kind,lang").execute()
-    except Exception:
-        pass
-
-def fmt_date_l(d):
-    if L() == "hi":
-        return f"{d.day} {MON_HI[d.month - 1]} {d.year}"
-    if L() == "bn":
-        return f"{d.day} {MON_BN[d.month - 1]} {d.year}"
-    return f"{d:%d %b %Y}"
-
 def saturn_segments(chart):
-    """Saturn's sidereal sign over 100 years from birth, with exact change days."""
     if "_sat" in chart:
         return chart["_sat"]
     start = chart["birth_utc"]
@@ -2419,18 +2422,6 @@ def runs_for(segs, targets, merge_gap_days=500):
             else:
                 runs.append({"start": a, "end": b, "segs": [(s, a, b)]})
     return runs
-
-def sade_sati_info(chart):
-    T.update({
-    "ss_all_dates": ("All Saturn dates (almanac view)", "शनि की सभी तिथियाँ (पंचांग शैली)",
-                     "শনির সব তারিখ (পঞ্জিকা অনুযায়ী)"),
-    "ss_retro_note": ("Saturn moves back and forth near sign boundaries, so a phase can come in two or three parts.",
-                      "राशि की सीमा के पास शनि आगे-पीछे चलते हैं, इसलिए कोई चरण दो या तीन हिस्सों में आ सकता है।",
-                      "রাশির সীমানার কাছে শনি সামনে-পিছনে চলেন, তাই একটি পর্যায় দুই বা তিন ভাগে আসতে পারে।"),
-    "col_phase": ("Phase", "चरण", "পর্যায়"),
-})
-
-ONE_DAY = timedelta(days=1)
 
 def sade_sati_info(chart):
     m = chart["planets"]["Moon"]["sign"]
@@ -2570,7 +2561,8 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
     drows = []
     for r in [r for r in info["dhaiya"] if r["end"] > now][:6]:
         status = t("st_now") if r["start"] <= now < r["end"] else t("st_future")
-        drows.append({t("col_type"): t(r["kind"]), t("col_sign"): sign_name((m + (3 if r["kind"] == "dh4" else 7)) % 12),
+        dsign = (m + (3 if r["kind"] == "dh4" else 7)) % 12
+        drows.append({t("col_type"): t(r["kind"]), t("col_sign"): sign_name(dsign),
                       t("col_from"): fmt_date_l(r["start"]), t("col_to"): fmt_date_l(r["end"] - ONE_DAY),
                       t("col_status"): status})
     if drows:
@@ -2612,6 +2604,7 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
     st.caption(t("ss_note"))
     if chart["time_unknown"]:
         st.caption(t("ss_unknown"))
+
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
@@ -3082,12 +3075,14 @@ with match:
                 if mres.get("reading"):
                     st.markdown(mres["reading"])
 
-# ----- SHARE -----
-with share:
-    share_tab(chart, pname, today, day_ref)
 # ----- REPORTS -----
 with reports:
     sade_sati_section(chart, pname, prel, pid, uid, now)
+
+# ----- SHARE -----
+with share:
+    share_tab(chart, pname, today, day_ref)
+
 # ----- FOOTER -----
 st.divider()
 if "paste-your-link" not in FEEDBACK_URL:
