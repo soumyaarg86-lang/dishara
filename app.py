@@ -22,7 +22,7 @@ FEEDBACK_URL = "https://forms.gle/paste-your-link-here"
 APP_URL = "https://dishara.streamlit.app"
 RELATIONS = ["Self", "Spouse / Partner", "Mother", "Father", "Son", "Daughter",
              "Sibling", "Friend", "Other"]
-CHART_VERSION = 4
+CHART_VERSION = 5
 
 # =====================================================================
 # LANGUAGES & TRANSLATIONS
@@ -364,7 +364,92 @@ T = {
                 "मैं थोड़ा विश्राम कर रही हूँ। कृपया एक मिनट बाद फिर पूछें।",
                 "আমি একটু বিশ্রাম নিচ্ছি। অনুগ্রহ করে এক মিনিট পরে আবার জিজ্ঞাসা করুন।"),
 }
-
+T.update({
+    "tab_reports": ("Reports", "रिपोर्ट", "রিপোর্ট"),
+    "ss_title": ("Sade Sati: your season of growth", "साढ़ेसाती: आपके विकास का समय", "সাড়েসাতি: আপনার বিকাশের সময়"),
+    "ss_intro": ("Sade Sati is the roughly 7½ years when Saturn moves through the sign before your Moon sign, your "
+                 "Moon sign and the sign after it. Traditionally it's a time of responsibility, maturity and lasting "
+                 "growth, not something to fear.",
+                 "साढ़ेसाती लगभग साढ़े सात साल का वह समय है जब शनि आपकी चंद्र राशि से पहले की राशि, आपकी चंद्र राशि और "
+                 "उसके बाद की राशि से गुज़रते हैं। परंपरागत रूप से यह ज़िम्मेदारी, परिपक्वता और स्थायी विकास का समय है, "
+                 "डरने की कोई बात नहीं।",
+                 "সাড়েসাতি হলো প্রায় সাড়ে সাত বছরের সেই সময়, যখন শনি আপনার চন্দ্র রাশির আগের রাশি, আপনার চন্দ্র রাশি "
+                 "ও তার পরের রাশি দিয়ে যান। ঐতিহ্যগতভাবে এটি দায়িত্ব, পরিণতি ও স্থায়ী বিকাশের সময়, ভয়ের কিছু নয়।"),
+    "ss_moon_line": ("Your Moon sign: {s}", "आपकी चंद्र राशि: {s}", "আপনার চন্দ্র রাশি: {s}"),
+    "ss_now": ("You're in Sade Sati now · {phase}", "आप अभी साढ़ेसाती में हैं · {phase}",
+               "আপনি এখন সাড়েসাতিতে আছেন · {phase}"),
+    "ss_not": ("You're not in Sade Sati now", "आप अभी साढ़ेसाती में नहीं हैं", "আপনি এখন সাড়েসাতিতে নেই"),
+    "ss_runs": ("From {a} to {b}", "{a} से {b} तक", "{a} থেকে {b} পর্যন্ত"),
+    "ss_next": ("Next Sade Sati: {a} to {b}", "अगली साढ़ेसाती: {a} से {b} तक", "পরবর্তী সাড়েসাতি: {a} থেকে {b} পর্যন্ত"),
+    "ss_phases_title": ("The three phases", "तीन चरण", "তিনটি পর্যায়"),
+    "ss_saturn_in": ("Saturn in {s}", "शनि {s} में", "শনি {s} রাশিতে"),
+    "ss_points": ("Saturn's Ashtakavarga points in this sign: {p} of 8 · {w}",
+                  "इस राशि में शनि के अष्टकवर्ग अंक: 8 में से {p} · {w}",
+                  "এই রাশিতে শনির অষ্টকবর্গ বিন্দু: 8-এর মধ্যে {p} · {w}"),
+    "ss_w_light": ("lighter", "हल्का", "হালকা"),
+    "ss_w_steady": ("steady", "सामान्य", "স্থির"),
+    "ss_w_patient": ("asks for patience", "धैर्य चाहिए", "ধৈর্য প্রয়োজন"),
+    "ss_dasha": ("Life chapter running then: {p}", "उस समय चल रही दशा: {p}", "তখন চলমান দশা: {p}"),
+    "ss_factors_title": ("What makes this season easier for you", "आपके लिए यह समय किन बातों से आसान होता है",
+                         "কী কারণে এই সময় আপনার জন্য সহজ হয়"),
+    "ss_f_role": ("Saturn is your {role}, so this season tends to build lasting results.",
+                  "शनि आपके लिए {role} हैं, इसलिए यह समय स्थायी परिणाम बनाने वाला होता है।",
+                  "শনি আপনার {role}, তাই এই সময় সাধারণত স্থায়ী ফল গড়ে তোলে।"),
+    "ss_f_strong": ("Saturn is {dig} in your chart, which gives it strength and fairness.",
+                    "आपकी कुंडली में शनि {dig} हैं, जिससे उन्हें बल और न्यायप्रियता मिलती है।",
+                    "আপনার কুণ্ডলীতে শনি {dig}, যা তাঁকে শক্তি ও ন্যায়পরায়ণতা দেয়।"),
+    "ss_f_friend": ("Your Moon sign's lord, {lord}, is friendly with Saturn.",
+                    "आपकी चंद्र राशि के स्वामी {lord} शनि के मित्र हैं।",
+                    "আপনার চন্দ্র রাশির অধিপতি {lord} শনির বন্ধু।"),
+    "ss_f_own": ("Your Moon sign is ruled by Saturn itself, so it treats you as its own.",
+                 "आपकी चंद्र राशि के स्वामी स्वयं शनि हैं, इसलिए वे आपको अपना मानते हैं।",
+                 "আপনার চন্দ্র রাশির অধিপতি স্বয়ং শনি, তাই তিনি আপনাকে আপন মনে করেন।"),
+    "ss_f_jup": ("Jupiter supports your natal Moon by conjunction or aspect, a classic protective factor.",
+                 "गुरु युति या दृष्टि से आपके जन्म चंद्र को सहारा देते हैं, जो एक पारंपरिक रक्षक योग है।",
+                 "বৃহস্পতি যুতি বা দৃষ্টির মাধ্যমে আপনার জন্মচন্দ্রকে সমর্থন করেন, যা একটি প্রচলিত রক্ষাকারী যোগ।"),
+    "ss_f_none": ("Steady routines and patience are your best allies in this season.",
+                  "इस समय नियमित दिनचर्या और धैर्य आपके सबसे अच्छे साथी हैं।",
+                  "এই সময়ে নিয়মিত রুটিন ও ধৈর্যই আপনার সবচেয়ে বড় সঙ্গী।"),
+    "ss_life_title": ("Your Sade Sati periods in this lifetime", "जीवन भर की साढ़ेसाती", "জীবনের সাড়েসাতি পর্ব"),
+    "col_from": ("From", "से", "থেকে"),
+    "col_to": ("To", "तक", "পর্যন্ত"),
+    "col_status": ("Status", "स्थिति", "অবস্থা"),
+    "col_type": ("Type", "प्रकार", "ধরন"),
+    "st_past": ("Completed", "पूर्ण", "সম্পন্ন"),
+    "st_now": ("Now", "अभी", "এখন"),
+    "st_future": ("Upcoming", "आगामी", "আসন্ন"),
+    "ss_dhaiya_title": ("Dhaiya: Saturn's 2½-year seasons", "ढैय्या: शनि का ढाई साल का प्रभाव", "আড়াই বছরের শনি (ঢাইয়া)"),
+    "ss_dhaiya_note": ("When Saturn passes the 4th or 8th sign from your Moon: a shorter season of adjustment at home "
+                       "or within.",
+                       "जब शनि आपकी चंद्र राशि से चौथी या आठवीं राशि से गुज़रते हैं: घर या मन में समायोजन का एक छोटा समय।",
+                       "যখন শনি আপনার চন্দ্র রাশি থেকে চতুর্থ বা অষ্টম রাশি দিয়ে যান: ঘরে বা মনে মানিয়ে নেওয়ার একটি ছোট সময়।"),
+    "dh4": ("4th from Moon", "चंद्र से चौथा", "চন্দ্র থেকে চতুর্থ"),
+    "dh8": ("8th from Moon", "चंद्र से आठवाँ", "চন্দ্র থেকে অষ্টম"),
+    "ss_rem_title": ("Simple, free practices for this season", "इस समय के लिए सरल, निःशुल्क उपाय",
+                     "এই সময়ের জন্য সহজ, বিনামূল্যের অভ্যাস"),
+    "ss_rem_note": ("No gemstones or paid rituals are needed. Consistency matters more than anything.",
+                    "किसी रत्न या सशुल्क अनुष्ठान की ज़रूरत नहीं। निरंतरता सबसे ज़्यादा मायने रखती है।",
+                    "কোনো রত্ন বা অর্থের বিনিময়ে আচার-অনুষ্ঠানের প্রয়োজন নেই। ধারাবাহিকতাই সবচেয়ে গুরুত্বপূর্ণ।"),
+    "ss_guide_title": ("Your personal guide", "आपका व्यक्तिगत मार्गदर्शन", "আপনার ব্যক্তিগত নির্দেশিকা"),
+    "ss_guide_btn": ("Write my personal Sade Sati guide", "मेरा व्यक्तिगत साढ़ेसाती मार्गदर्शन लिखें",
+                     "আমার ব্যক্তিগত সাড়েসাতি নির্দেশিকা লিখুন"),
+    "ss_guide_refresh": ("Rewrite my guide", "मार्गदर्शन फिर से लिखें", "নির্দেশিকা আবার লিখুন"),
+    "ss_writing": ("Dishara is writing your guide...", "दिशारा आपका मार्गदर्शन लिख रही है...",
+                   "দিশারা আপনার নির্দেশিকা লিখছে..."),
+    "ss_note": ("Dates come from Saturn's exact movement (Lahiri ayanamsha) and may differ by a few days from other "
+                "almanacs. Saturn sometimes moves back briefly, so neighbouring phases can overlap.",
+                "तिथियाँ शनि की सटीक गति (लाहिड़ी अयनांश) से निकाली गई हैं और अन्य पंचांगों से कुछ दिन अलग हो सकती हैं। "
+                "शनि कभी-कभी थोड़े समय के लिए वक्री होकर पीछे जाते हैं, इसलिए पास के चरण आपस में मिल सकते हैं।",
+                "তারিখগুলি শনির সঠিক গতি (লাহিড়ী অয়নাংশ) থেকে গণনা করা এবং অন্য পঞ্জিকা থেকে কয়েক দিন আলাদা হতে "
+                "পারে। শনি মাঝে মাঝে অল্প সময়ের জন্য বক্রী হয়ে পিছিয়ে যান, তাই পাশাপাশি পর্যায় একে অপরের সঙ্গে মিশে "
+                "যেতে পারে।"),
+    "ss_unknown": ("Birth time unknown: your Moon sign is still reliable unless the Moon changed signs on your birth "
+                   "day. Ashtakavarga points need the exact time, so they aren't shown.",
+                   "जन्म समय अज्ञात: आपकी चंद्र राशि फिर भी विश्वसनीय है, जब तक कि जन्म के दिन चंद्रमा ने राशि न बदली "
+                   "हो। अष्टकवर्ग अंकों के लिए सही समय चाहिए, इसलिए वे नहीं दिखाए गए हैं।",
+                   "জন্মসময় অজানা: জন্মের দিন চন্দ্র রাশি না বদলালে আপনার চন্দ্র রাশি নির্ভরযোগ্য। অষ্টকবর্গ বিন্দুর "
+                   "জন্য সঠিক সময় লাগে, তাই সেগুলি দেখানো হয়নি।"),
+})
 def t(key, **kw):
     s = pick(T[key])
     return s.format(**kw) if kw else s
@@ -928,7 +1013,7 @@ def compute_chart(local_dt, lat, lng, time_unknown=False):
         p["vargas"] = {n: varga_sign(p["lon"], n) for n in VARGA_NS}
         p["combust"] = is_combust(name, p["lon"], sun_lon, p["retro"])
         p["vargottama"] = (not time_unknown) and p["sign"] == p["vargas"][9]
-    chart = {"asc": asc, "asc_sign": asc_sign, "time_unknown": time_unknown,
+    chart = {"asc": asc, "asc_sign": asc_sign, "time_unknown": time_unknown, "birth_utc": utc,
              "planets": planets, "roles": functional_roles(asc_sign),
              "dashas": vimshottari(planets["Moon"]["lon"], utc)}
     chart["av"] = ashtakavarga(chart)
@@ -2228,7 +2313,280 @@ def share_tab(chart, pname, today, day_ref):
         st.caption(t("sh_hint"))
         if content is None:
             st.caption(t("sh_fresh"))
+# ---------------- SADE SATI REPORT ----------------
+SS_PHASE_T = [("Phase 1 · Rising", "पहला चरण · आरंभ", "প্রথম পর্যায় · শুরু"),
+              ("Phase 2 · Peak", "दूसरा चरण · शिखर", "দ্বিতীয় পর্যায় · শীর্ষ"),
+              ("Phase 3 · Setting", "तीसरा चरण · समापन", "তৃতীয় পর্যায় · সমাপ্তি")]
+SS_MEAN_T = [
+    ("Saturn in the 12th from your Moon: a time to simplify, rest well, plan expenses carefully and let go of "
+     "what no longer serves you.",
+     "चंद्र से 12वें भाव में शनि: जीवन को सरल बनाने, अच्छी नींद लेने, खर्चों की सावधानी से योजना बनाने और जो अब "
+     "काम का नहीं उसे छोड़ने का समय।",
+     "চন্দ্র থেকে দ্বাদশে শনি: জীবন সরল করা, ভালো ঘুম, সাবধানে খরচের পরিকল্পনা এবং যা আর কাজের নয় তা ছেড়ে দেওয়ার সময়।"),
+    ("Saturn over your Moon: the heart of the season. Responsibilities grow, and so does your maturity. Steady "
+     "routines, healthy habits and patience bring lasting results.",
+     "आपके चंद्र पर शनि: इस समय का केंद्र। ज़िम्मेदारियाँ बढ़ती हैं और साथ ही आपकी परिपक्वता भी। नियमित दिनचर्या, "
+     "अच्छी आदतें और धैर्य स्थायी परिणाम लाते हैं।",
+     "আপনার চন্দ্রের উপর শনি: এই সময়ের কেন্দ্র। দায়িত্ব বাড়ে, সঙ্গে বাড়ে আপনার পরিণতিবোধও। নিয়মিত রুটিন, ভালো "
+     "অভ্যাস আর ধৈর্য স্থায়ী ফল আনে।"),
+    ("Saturn in the 2nd from your Moon: a time to consolidate. Focus on family, savings and careful words; the "
+     "effort of the last years starts to settle.",
+     "चंद्र से दूसरे भाव में शनि: मज़बूती देने का समय। परिवार, बचत और सोच-समझकर बोलने पर ध्यान दें; पिछले वर्षों की "
+     "मेहनत स्थिर होने लगती है।",
+     "চন্দ্র থেকে দ্বিতীয়ে শনি: সংহত করার সময়। পরিবার, সঞ্চয় ও ভেবেচিন্তে কথা বলায় মন দিন; গত কয়েক বছরের "
+     "পরিশ্রম স্থির হতে শুরু করে।"),
+]
+SS_REMEDIES_T = [
+    ("Keep a steady daily routine: fixed times for sleep, work and exercise.",
+     "नियमित दिनचर्या रखें: सोने, काम और व्यायाम का तय समय।",
+     "নিয়মিত দৈনিক রুটিন রাখুন: ঘুম, কাজ ও ব্যায়ামের নির্দিষ্ট সময়।"),
+    ("Serve and respect elders, workers and those who help you.",
+     "बुज़ुर्गों, कामगारों और आपकी मदद करने वालों की सेवा और सम्मान करें।",
+     "প্রবীণ, শ্রমজীবী ও যাঁরা আপনাকে সাহায্য করেন তাঁদের সেবা ও সম্মান করুন।"),
+    ("On Saturdays, take a quiet moment for prayer or reflection; many recite the Hanuman Chalisa or a Shani mantra.",
+     "शनिवार को प्रार्थना या चिंतन के लिए कुछ शांत समय निकालें; कई लोग हनुमान चालीसा या शनि मंत्र का पाठ करते हैं।",
+     "শনিবারে প্রার্থনা বা চিন্তার জন্য কিছু শান্ত সময় রাখুন; অনেকে হনুমান চালিসা বা শনি মন্ত্র পাঠ করেন।"),
+    ("Save a little regularly and avoid big risks taken in a hurry.",
+     "नियमित रूप से थोड़ी बचत करें और जल्दबाज़ी में बड़े जोखिम न लें।",
+     "নিয়মিত অল্প সঞ্চয় করুন এবং তাড়াহুড়ো করে বড় ঝুঁকি নেবেন না।"),
+    ("Finish what you start; Saturn rewards patience and honest effort.",
+     "जो शुरू करें उसे पूरा करें; शनि धैर्य और ईमानदार मेहनत का फल देते हैं।",
+     "যা শুরু করবেন তা শেষ করুন; শনি ধৈর্য ও সৎ পরিশ্রমের ফল দেন।"),
+    ("Give food, clothes or time to those in need, as you are able.",
+     "अपनी क्षमता के अनुसार ज़रूरतमंदों को भोजन, वस्त्र या समय दें।",
+     "সামর্থ্য অনুযায়ী প্রয়োজনে থাকা মানুষকে খাবার, বস্ত্র বা সময় দিন।"),
+]
 
+def get_report(uid, pid, kind, lang):
+    try:
+        rows = (db().table("reports").select("content").eq("user_id", uid).eq("profile_id", pid)
+                .eq("kind", kind).eq("lang", lang).limit(1).execute().data)
+        return rows[0]["content"] if rows else None
+    except Exception:
+        return None
+
+def save_report(uid, pid, kind, lang, content):
+    try:
+        db().table("reports").upsert({"user_id": uid, "profile_id": pid, "kind": kind, "lang": lang,
+                                      "content": content}, on_conflict="profile_id,kind,lang").execute()
+    except Exception:
+        pass
+
+def fmt_date_l(d):
+    if L() == "hi":
+        return f"{d.day} {MON_HI[d.month - 1]} {d.year}"
+    if L() == "bn":
+        return f"{d.day} {MON_BN[d.month - 1]} {d.year}"
+    return f"{d:%d %b %Y}"
+
+def saturn_segments(chart):
+    """Saturn's sidereal sign over 100 years from birth, with exact change days."""
+    if "_sat" in chart:
+        return chart["_sat"]
+    start = chart["birth_utc"]
+    end = start + timedelta(days=365.25 * 100)
+
+    def sign_at(dt):
+        return int(sidereal_lon(julian_day(dt), swe.SATURN)[0] // 30)
+
+    segs, cur_s, seg_start, t_ = [], sign_at(start), start, start
+    step = timedelta(days=10)
+    while t_ < end:
+        nxt = t_ + step
+        s2 = sign_at(nxt)
+        if s2 != cur_s:
+            lo, hi = t_, nxt
+            while (hi - lo) > timedelta(days=1):
+                mid = lo + (hi - lo) / 2
+                if sign_at(mid) == cur_s:
+                    lo = mid
+                else:
+                    hi = mid
+            segs.append((cur_s, seg_start, hi))
+            seg_start, cur_s = hi, s2
+        t_ = nxt
+    segs.append((cur_s, seg_start, end))
+    chart["_sat"] = segs
+    return segs
+
+def runs_for(segs, targets, merge_gap_days=500):
+    runs = []
+    for s, a, b in segs:
+        if s in targets:
+            if runs and (a - runs[-1]["end"]).days <= merge_gap_days:
+                runs[-1]["end"] = b
+                runs[-1]["segs"].append((s, a, b))
+            else:
+                runs.append({"start": a, "end": b, "segs": [(s, a, b)]})
+    return runs
+
+def sade_sati_info(chart):
+    m = chart["planets"]["Moon"]["sign"]
+    segs = saturn_segments(chart)
+    runs = runs_for(segs, {(m - 1) % 12, m, (m + 1) % 12})
+    for r in runs:
+        r["phases"] = []
+        for k, sign in enumerate([(m - 1) % 12, m, (m + 1) % 12]):
+            ss = [(a, b) for s, a, b in r["segs"] if s == sign]
+            if ss:
+                r["phases"].append({"n": k, "sign": sign, "start": min(a for a, _ in ss),
+                                    "end": max(b for _, b in ss)})
+    dhaiya = []
+    for kind, off in (("dh4", 3), ("dh8", 7)):
+        for r in runs_for(segs, {(m + off) % 12}):
+            r["kind"] = kind
+            dhaiya.append(r)
+    dhaiya.sort(key=lambda r: r["start"])
+    return {"moon": m, "runs": runs, "dhaiya": dhaiya}
+
+def dasha_at(chart, dt):
+    for md in chart["dashas"]:
+        if md["start"] <= dt < md["end"]:
+            for ad in antardashas(md):
+                if ad["start"] <= dt < ad["end"]:
+                    return md["lord"], ad["lord"]
+            return md["lord"], None
+    return None, None
+
+def ss_easing(chart, m):
+    P, out = chart["planets"], []
+    role = chart["roles"]["Saturn"]
+    if not chart["time_unknown"] and role in ("Yogakaraka", "Lagna lord", "Functional benefic"):
+        out.append(t("ss_f_role", role=pick(ROLE_T[role])))
+    if P["Saturn"]["dignity"] in ("exalted", "own sign"):
+        out.append(t("ss_f_strong", dig=pick(NOTE_T[P["Saturn"]["dignity"]])))
+    lord = SIGN_LORDS[m]
+    if lord == "Saturn":
+        out.append(t("ss_f_own"))
+    elif "Saturn" in FRIENDS.get(lord, set()):
+        out.append(t("ss_f_friend", lord=planet_name(lord)))
+    if (m - P["Jupiter"]["sign"]) % 12 + 1 in (1, 5, 7, 9):
+        out.append(t("ss_f_jup"))
+    if not out:
+        out.append(t("ss_f_none"))
+    return out
+
+def sade_sati_text(chart, info, now):
+    av = chart.get("av")
+    lines = [f"Moon sign: {SIGNS[info['moon']]}", f"Today: {now:%d %b %Y}"]
+    for r in info["runs"]:
+        status = ("CURRENT" if r["start"] <= now < r["end"] else
+                  "completed" if r["end"] <= now else "upcoming")
+        lines.append(f"Sade Sati {r['start']:%d %b %Y} to {r['end']:%d %b %Y} ({status})")
+        if status != "completed":
+            for ph in r["phases"]:
+                md, ad = dasha_at(chart, ph["start"])
+                pts = f", Saturn Ashtakavarga {av['bav']['Saturn'][ph['sign']]}/8" if av else ""
+                lines.append(f"  Phase {ph['n'] + 1} (Saturn in {SIGNS[ph['sign']]}): "
+                             f"{ph['start']:%d %b %Y} to {ph['end']:%d %b %Y}{pts}; dasha then {md}-{ad}")
+    sat = chart["planets"]["Saturn"]
+    lines.append(f"Saturn's role for this Lagna: {chart['roles']['Saturn']}; natal Saturn in "
+                 f"{SIGNS[sat['sign']]} {sat['dignity']}".strip())
+    lines.append("Easing factors: " + "; ".join(ss_easing(chart, info["moon"])))
+    return "\n".join(lines)
+
+def sade_sati_section(chart, pname, prel, pid, uid, now):
+    info = sade_sati_info(chart)
+    m = info["moon"]
+    st.markdown(f"### {t('ss_title')}")
+    st.caption(t("ss_intro"))
+    cur_run = next((r for r in info["runs"] if r["start"] <= now < r["end"]), None)
+    next_run = next((r for r in info["runs"] if r["start"] > now), None)
+    focus = cur_run or next_run
+    cur_ph = None
+    if cur_run:
+        cur_ph = next((p for p in cur_run["phases"] if p["start"] <= now < p["end"]), cur_run["phases"][0])
+        pct = int(100 * (now - cur_run["start"]) / (cur_run["end"] - cur_run["start"]))
+        head = t("ss_now", phase=pick(SS_PHASE_T[cur_ph["n"]]))
+        sub = t("ss_runs", a=fmt_date_l(cur_run["start"]), b=fmt_date_l(cur_run["end"]))
+        bar = f'<div class="bar"><div style="width:{pct}%"></div></div>'
+    else:
+        head = t("ss_not")
+        sub = t("ss_next", a=fmt_date_l(next_run["start"]), b=fmt_date_l(next_run["end"])) if next_run else ""
+        bar = ""
+    st.markdown(f"<div class='card'><p class='muted'>{t('ss_moon_line', s=sign_name(m))}</p>"
+                f"<p class='big'>{head}</p><p class='muted'>{sub}</p>{bar}</div>", unsafe_allow_html=True)
+
+    av = chart.get("av")
+    if focus:
+        st.markdown(f"#### {t('ss_phases_title')}")
+        for ph in focus["phases"]:
+            active = cur_ph is not None and ph is cur_ph
+            border = "border:1.5px solid #FAC775;" if active else ""
+            pts = ""
+            if av:
+                p = av["bav"]["Saturn"][ph["sign"]]
+                w = t("ss_w_light") if p >= 5 else t("ss_w_steady") if p >= 3 else t("ss_w_patient")
+                pts = f"<p class='muted' style='margin-top:6px'>{t('ss_points', p=p, w=w)}</p>"
+            md, ad = dasha_at(chart, now if active else ph["start"])
+            ds = f"{planet_name(md)}–{planet_name(ad)}" if md and ad else (planet_name(md) if md else "")
+            dline = f"<p class='muted'>{t('ss_dasha', p=ds)}</p>" if ds else ""
+            title = f"{pick(SS_PHASE_T[ph['n']])} · {t('ss_saturn_in', s=sign_name(ph['sign']))}"
+            st.markdown(f"<div class='card' style='{border}'>"
+                        f"<p class='gold' style='margin:0;font-weight:500'>{title}</p>"
+                        f"<p class='muted'>{fmt_date_l(ph['start'])} – {fmt_date_l(ph['end'])}</p>"
+                        f"<p style='margin:8px 0 0'>{pick(SS_MEAN_T[ph['n']])}</p>{pts}{dline}</div>",
+                        unsafe_allow_html=True)
+
+    st.markdown(f"#### {t('ss_factors_title')}")
+    for f_ in ss_easing(chart, m):
+        st.markdown(f"- {f_}")
+
+    st.markdown(f"#### {t('ss_life_title')}")
+    rows = []
+    for r in info["runs"]:
+        status = (t("st_now") if r["start"] <= now < r["end"] else
+                  t("st_past") if r["end"] <= now else t("st_future"))
+        rows.append({t("col_from"): fmt_date_l(r["start"]), t("col_to"): fmt_date_l(r["end"]),
+                     t("col_status"): status})
+    st.dataframe(rows, hide_index=True)
+
+    st.markdown(f"#### {t('ss_dhaiya_title')}")
+    st.caption(t("ss_dhaiya_note"))
+    drows = []
+    for r in [r for r in info["dhaiya"] if r["end"] > now][:4]:
+        status = t("st_now") if r["start"] <= now < r["end"] else t("st_future")
+        drows.append({t("col_type"): t(r["kind"]), t("col_from"): fmt_date_l(r["start"]),
+                      t("col_to"): fmt_date_l(r["end"]), t("col_status"): status})
+    if drows:
+        st.dataframe(drows, hide_index=True)
+
+    st.markdown(f"#### {t('ss_rem_title')}")
+    for r_ in SS_REMEDIES_T:
+        st.markdown(f"- {pick(r_)}")
+    st.caption(t("ss_rem_note"))
+
+    st.markdown(f"#### {t('ss_guide_title')}")
+    rkey = f"ss|{pid}|{L()}"
+    cache = st.session_state.setdefault("reports", {})
+    if rkey not in cache:
+        saved = get_report(uid, pid, "sade_sati", L())
+        if saved:
+            cache[rkey] = saved
+    label = t("ss_guide_refresh") if rkey in cache else t("ss_guide_btn")
+    if st.button(label, key="ss_guide_btn"):
+        prompt = (f"SADE SATI GUIDE REQUEST. This request has its own format: follow it instead of the default "
+                  f"headings.\n\nDATA CALCULATED BY DISHARA'S ENGINE:\n{sade_sati_text(chart, info, now)}\n\n"
+                  f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
+                  f"Write a warm, practical guide with bold headings (translated into the reply language): "
+                  f"Your season at a glance (2-3 lines: where they are now, with dates), Phase by phase (one short "
+                  f"paragraph per phase of the current or next Sade Sati, using its dates, Saturn's Ashtakavarga "
+                  f"points and the dasha running then), Your strengths in this season (use the easing factors), "
+                  f"What you can do (4 practical, free steps). Frame Sade Sati as a season of responsibility, "
+                  f"maturity and growth. No fear, no gemstones or paid rituals, and no predictions of illness, "
+                  f"loss or death. Under 380 words.")
+        with st.spinner(t("ss_writing")):
+            text = ask_dishara(prompt, pname, prel)
+        if text:
+            cache[rkey] = text
+            save_report(uid, pid, "sade_sati", L(), text)
+        else:
+            st.caption(t("resting"))
+    if rkey in cache:
+        st.markdown(cache[rkey])
+    st.caption(t("ss_note"))
+    if chart["time_unknown"]:
+        st.caption(t("ss_unknown"))
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
@@ -2457,8 +2815,8 @@ today = (now + timedelta(hours=IST)).date()
 day_ref = datetime.combine(today, datetime.min.time()) + timedelta(hours=6 - IST)
 cur = next(d for d in chart["dashas"] if d["start"] <= now < d["end"])
 
-home, chat, kundali, match, share = st.tabs([t("tab_home"), t("tab_ask"), t("tab_kundali"),
-                                             t("tab_match"), t("tab_share")])
+home, chat, kundali, match, reports, share = st.tabs([t("tab_home"), t("tab_ask"), t("tab_kundali"),
+                                                      t("tab_match"), t("tab_reports"), t("tab_share")])
 
 # ----- HOME -----
 with home:
@@ -2702,7 +3060,9 @@ with match:
 # ----- SHARE -----
 with share:
     share_tab(chart, pname, today, day_ref)
-
+# ----- REPORTS -----
+with reports:
+    sade_sati_section(chart, pname, prel, pid, uid, now)
 # ----- FOOTER -----
 st.divider()
 if "paste-your-link" not in FEEDBACK_URL:
