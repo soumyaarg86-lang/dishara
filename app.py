@@ -2997,6 +2997,397 @@ def career_section(chart, pname, prel, pid, uid, now):
             st.caption(t("resting"))
     if rkey in cache:
         st.markdown(cache[rkey])
+MR = {
+    "rep_marriage": ("Marriage", "विवाह", "বিবাহ"),
+    "mr_title": ("Marriage & relationships report", "विवाह और संबंध रिपोर्ट", "বিবাহ ও সম্পর্ক রিপোর্ট"),
+    "mr_intro": ("Built from your 7th house, its lord, Venus and Jupiter, the D9 (Navamsa) chart, your dasha periods "
+                 "and the movement of Jupiter and Saturn over the next 10 years.",
+                 "आपके 7वें भाव, उसके स्वामी, शुक्र और गुरु, D9 (नवांश) कुंडली, आपकी दशाओं और अगले 10 वर्षों में गुरु "
+                 "और शनि की गति से तैयार।",
+                 "আপনার সপ্তম ভাব, তার অধিপতি, শুক্র ও বৃহস্পতি, D9 (নবাংশ) চার্ট, আপনার দশা এবং আগামী 10 বছরে "
+                 "বৃহস্পতি ও শনির গতি থেকে তৈরি।"),
+    "mr_minor": ("This report is meant for adults. It becomes available from age 18.",
+                 "यह रिपोर्ट वयस्कों के लिए है। यह 18 वर्ष की आयु से उपलब्ध होगी।",
+                 "এই রিপোর্ট প্রাপ্তবয়স্কদের জন্য। এটি 18 বছর বয়স থেকে পাওয়া যাবে।"),
+    "mr_unknown": ("Birth time unknown: this report reads from your Moon chart, and the D9 chart isn't available. "
+                   "Timing is approximate.",
+                   "जन्म समय अज्ञात: यह रिपोर्ट चंद्र कुंडली से पढ़ी गई है और D9 कुंडली उपलब्ध नहीं है। समय अनुमानित है।",
+                   "জন্মসময় অজানা: এই রিপোর্ট চন্দ্র কুণ্ডলী থেকে পড়া এবং D9 চার্ট পাওয়া যায় না। সময় আনুমানিক।"),
+    "mr_status": ("Relationship status", "संबंध की स्थिति", "সম্পর্কের অবস্থা"),
+    "st_single": ("Single", "अविवाहित", "অবিবাহিত"),
+    "st_together": ("Married or committed", "विवाहित या प्रतिबद्ध", "বিবাহিত বা প্রতিশ্রুতিবদ্ধ"),
+    "mr_glance": ("Your relationships at a glance", "एक नज़र में आपके संबंध", "এক নজরে আপনার সম্পর্ক"),
+    "mr_partner_title": ("Partner qualities your chart highlights", "आपकी कुंडली में दिखने वाले साथी के गुण",
+                         "আপনার কুণ্ডলীতে সঙ্গীর যে গুণগুলি দেখা যায়"),
+    "mr_seventh": ("Your 7th house is {s}: you're drawn to a partner who is {e}.",
+                   "आपका 7वाँ भाव {s} है: आप ऐसे साथी की ओर आकर्षित होते हैं जो {e} हों।",
+                   "আপনার সপ্তম ভাব {s}: আপনি এমন সঙ্গীর প্রতি আকৃষ্ট হন যিনি {e}।"),
+    "mr_d9_title": ("Your D9 (Navamsa) chart", "आपकी D9 (नवांश) कुंडली", "আপনার D9 (নবাংশ) চার্ট"),
+    "mr_d9_line": ("D9 Lagna: {s}, ruled by {p}. Your 7th lord, {l}, falls in house {h} of the D9, and Venus sits "
+                   "in {v}.",
+                   "D9 लग्न: {s}, स्वामी {p}। आपके सप्तमेश {l} D9 के {h} भाव में हैं और शुक्र {v} में हैं।",
+                   "D9 লগ্ন: {s}, অধিপতি {p}। আপনার সপ্তমেশ {l} D9-এর {h} ভাবে আছেন এবং শুক্র {v} রাশিতে আছেন।"),
+    "mr_timeline_title": ("Your next 10 years", "आपके अगले 10 वर्ष", "আপনার আগামী 10 বছর"),
+    "mr_month_chart": ("Monthly relationship momentum (0–100)", "मासिक संबंध गति (0–100)",
+                       "মাসিক সম্পর্কের গতি (0–100)"),
+    "rl_strong": ("Strong relationship window", "संबंधों के लिए प्रबल समय", "সম্পর্কের জন্য প্রবল সময়"),
+    "rl_steady": ("Steady and settled", "स्थिर और सहज", "স্থির ও স্বাভাবিক"),
+    "rl_care": ("Patience and care", "धैर्य और देखभाल", "ধৈর্য ও যত্ন"),
+    "mr_score_note": ("The score combines dasha periods linked to your 7th house, Venus and Jupiter, Jupiter and "
+                      "Saturn's transits, double transits on your 7th house and Ashtakavarga points. It shows "
+                      "supportive timing, not fixed events, and your own choices always matter most.",
+                      "स्कोर आपके 7वें भाव, शुक्र और गुरु से जुड़ी दशाओं, गुरु-शनि के गोचर, 7वें भाव पर दोहरे गोचर और "
+                      "अष्टकवर्ग अंकों को जोड़ता है। यह अनुकूल समय दिखाता है, निश्चित घटनाएँ नहीं; आपके अपने निर्णय "
+                      "सबसे महत्वपूर्ण हैं।",
+                      "স্কোর আপনার সপ্তম ভাব, শুক্র ও বৃহস্পতির সঙ্গে যুক্ত দশা, বৃহস্পতি-শনির গোচর, সপ্তম ভাবে দ্বৈত "
+                      "গোচর এবং অষ্টকবর্গ বিন্দু মিলিয়ে তৈরি। এটি অনুকূল সময় দেখায়, নির্দিষ্ট ঘটনা নয়; আপনার নিজের "
+                      "সিদ্ধান্তই সবচেয়ে গুরুত্বপূর্ণ।"),
+    "mr_win_single": ("Supportive windows for marriage or commitment", "विवाह या प्रतिबद्धता के लिए अनुकूल समय",
+                      "বিবাহ বা প্রতিশ্রুতির জন্য অনুকূল সময়"),
+    "mr_win_together": ("Best windows for harmony and family milestones",
+                        "सामंजस्य और पारिवारिक उपलब्धियों के लिए सबसे अच्छे समय",
+                        "সম্প্রীতি ও পারিবারিক মাইলফলকের সেরা সময়"),
+    "mr_no_windows": ("No single standout peak in the next 10 years; steady care and openness are your path.",
+                      "अगले 10 वर्षों में कोई एक बड़ा शिखर नहीं दिखता; निरंतर देखभाल और खुलापन आपकी राह है।",
+                      "আগামী 10 বছরে কোনো একক বড় শীর্ষ নেই; নিয়মিত যত্ন ও খোলা মনই আপনার পথ।"),
+    "wr7_dasha": ("{d} period activates your 7th house", "{d} दशा आपके 7वें भाव को सक्रिय करती है",
+                  "{d} দশা আপনার সপ্তম ভাবকে সক্রিয় করে"),
+    "wr7_dt": ("Jupiter and Saturn both activate your 7th house", "गुरु और शनि दोनों आपके 7वें भाव को सक्रिय करते हैं",
+               "বৃহস্পতি ও শনি দুজনেই আপনার সপ্তম ভাবকে সক্রিয় করে"),
+    "wr7_jup": ("Jupiter blesses your 7th house", "गुरु आपके 7वें भाव को आशीर्वाद देते हैं",
+                "বৃহস্পতি আপনার সপ্তম ভাবকে আশীর্বাদ করেন"),
+    "mr_past_note": ("The same method applied to the last 5 years. Did meaningful relationship moments, such as "
+                     "meeting someone special, an engagement or a marriage, fall in the stronger windows?",
+                     "यही पद्धति पिछले 5 वर्षों पर लागू की गई है। क्या संबंधों के महत्वपूर्ण पल, जैसे किसी खास से "
+                     "मिलना, सगाई या विवाह, प्रबल समय में आए?",
+                     "একই পদ্ধতি গত 5 বছরে প্রয়োগ করা হয়েছে। সম্পর্কের গুরুত্বপূর্ণ মুহূর্তগুলি, যেমন বিশেষ কারও "
+                     "সঙ্গে দেখা, বাগদান বা বিবাহ, কি প্রবল সময়ে এসেছিল?"),
+    "mr_guide_title": ("Your personal relationship guide", "आपका व्यक्तिगत संबंध मार्गदर्शन",
+                       "আপনার ব্যক্তিগত সম্পর্ক নির্দেশিকা"),
+    "mr_guide_btn": ("Write my personal relationship guide", "मेरा व्यक्तिगत संबंध मार्गदर्शन लिखें",
+                     "আমার ব্যক্তিগত সম্পর্ক নির্দেশিকা লিখুন"),
+    "mr_guide_refresh": ("Rewrite my relationship guide", "संबंध मार्गदर्शन फिर से लिखें",
+                         "সম্পর্ক নির্দেশিকা আবার লিখুন"),
+    "mr_writing": ("Dishara is writing your relationship guide...", "दिशारा आपका संबंध मार्गदर्शन लिख रही है...",
+                   "দিশারা আপনার সম্পর্ক নির্দেশিকা লিখছে..."),
+}
+
+def mt(key, **kw):
+    s = pick(MR[key])
+    return s.format(**kw) if kw else s
+
+PARTNER_T = {
+    "Sun": ("Confident, principled, with leadership qualities", "आत्मविश्वासी, सिद्धांतवादी, नेतृत्व गुणों वाले",
+            "আত্মবিশ্বাসী, নীতিবান, নেতৃত্বগুণসম্পন্ন"),
+    "Moon": ("Caring, emotionally warm, family-oriented", "स्नेही, भावनात्मक रूप से गर्मजोश, परिवार-प्रेमी",
+             "যত্নশীল, আবেগে উষ্ণ, পরিবারমুখী"),
+    "Mars": ("Energetic, direct, protective and driven", "ऊर्जावान, स्पष्टवादी, रक्षक और महत्वाकांक्षी",
+             "উদ্যমী, স্পষ্টভাষী, রক্ষাকারী ও উদ্যোগী"),
+    "Mercury": ("Witty, youthful, communicative and smart", "हाज़िरजवाब, युवा मन वाले, बातूनी और समझदार",
+                "রসিক, তরুণমনা, মিশুক ও বুদ্ধিমান"),
+    "Jupiter": ("Wise, generous, ethical and supportive", "ज्ञानी, उदार, नैतिक और सहयोगी",
+                "জ্ঞানী, উদার, নীতিপরায়ণ ও সহায়ক"),
+    "Venus": ("Charming, artistic, affectionate and refined", "आकर्षक, कलात्मक, स्नेही और सुसंस्कृत",
+              "মনোমুগ্ধকর, শিল্পমনা, স্নেহশীল ও রুচিশীল"),
+    "Saturn": ("Mature, responsible, loyal and steady", "परिपक्व, ज़िम्मेदार, वफ़ादार और स्थिर",
+               "পরিণত, দায়িত্বশীল, বিশ্বস্ত ও স্থির"),
+    "Rahu": ("Unconventional and ambitious, possibly from a different background or place",
+             "अलग सोच वाले और महत्वाकांक्षी, संभवतः अलग पृष्ठभूमि या स्थान से",
+             "ব্যতিক্রমী ও উচ্চাকাঙ্ক্ষী, সম্ভবত ভিন্ন পটভূমি বা স্থানের"),
+    "Ketu": ("Spiritual, independent, deep and quiet", "आध्यात्मिक, स्वतंत्र, गहरे और शांत",
+             "আধ্যাত্মিক, স্বাধীন, গভীর ও শান্ত"),
+}
+RR_T = {"rule7": ("rules your 7th house", "आपके 7वें भाव के स्वामी", "আপনার সপ্তম ভাবের অধিপতি"),
+        "in7": ("sits in your 7th house", "आपके 7वें भाव में स्थित", "আপনার সপ্তম ভাবে অবস্থিত"),
+        "asp7": ("aspects your 7th house", "आपके 7वें भाव पर दृष्टि", "আপনার সপ্তম ভাবে দৃষ্টি দেয়"),
+        "d9_7": ("rules the 7th house of your D9", "आपके D9 के 7वें भाव के स्वामी", "আপনার D9-এর সপ্তম ভাবের অধিপতি"),
+        "karaka": ("natural significator of love and partnership", "प्रेम और साझेदारी के प्राकृतिक कारक",
+                   "প্রেম ও অংশীদারিত্বের প্রাকৃতিক কারক")}
+ELEMENT_T = [("lively, confident and passionate", "जीवंत, आत्मविश्वासी और उत्साही", "প্রাণবন্ত, আত্মবিশ্বাসী ও উদ্যমী"),
+             ("practical, dependable and grounded", "व्यावहारिक, भरोसेमंद और स्थिर", "বাস্তববাদী, নির্ভরযোগ্য ও স্থির"),
+             ("sociable, curious and intellectual", "मिलनसार, जिज्ञासु और बुद्धिमान", "মিশুক, কৌতূহলী ও বুদ্ধিদীপ্ত"),
+             ("sensitive, caring and emotionally deep", "संवेदनशील, स्नेही और भावनात्मक रूप से गहरे",
+              "সংবেদনশীল, যত্নশীল ও আবেগে গভীর")]
+REL_HOUSES_W = {7: 2, 2: 1, 11: 1, 5: 0.5}
+
+def rel_label(score):
+    return "rl_strong" if score >= GROWTH else "rl_steady" if score >= STEADY else "rl_care"
+
+def rel_link(chart, planet, asp):
+    P, w = chart["planets"], 0.0
+    if planet in ("Rahu", "Ketu"):
+        w += 0.5 * rel_link(chart, SIGN_LORDS[P[planet]["sign"]], asp)
+    else:
+        for h, hw in REL_HOUSES_W.items():
+            if lord_of(chart, h) == planet:
+                w += hw
+        w += ROLE_W.get(chart["roles"][planet], 0)
+        if planet in asp[7]:
+            w += 1
+        if planet in ("Venus", "Jupiter"):
+            w += 0.5
+    w += REL_HOUSES_W.get(P[planet]["house"], 0)
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 9)
+        if (P[planet]["vargas"][9] - dl) % 12 + 1 in (1, 4, 5, 7, 9, 10):
+            w += 0.5
+    return w
+
+def rel_months(chart, start, months):
+    key = f"{start:%Y-%m}|{months}"
+    store = chart.setdefault("_rm", {})
+    if key in store:
+        return store[key]
+    P, asp, av = chart["planets"], aspects_on(chart), chart.get("av")
+    moon = P["Moon"]["sign"]
+    s7 = (chart["asc_sign"] + 6) % 12
+    l7_sign = P[lord_of(chart, 7)]["sign"]
+    links = {pl_: rel_link(chart, pl_, asp) for pl_ in P}
+    out = []
+    for i in range(months):
+        mm = (start.month - 1 + i) % 12 + 1
+        yy = start.year + (start.month - 1 + i) // 12
+        d = datetime(yy, mm, 15)
+        md, ad = dasha_at(chart, d)
+        jd = julian_day(d)
+        js = int(sidereal_lon(jd, swe.JUPITER)[0] // 30)
+        ss = int(sidereal_lon(jd, swe.SATURN)[0] // 30)
+        raw = 0.0
+        if md:
+            raw += 0.4 * links[md]
+        if ad:
+            raw += 0.8 * links[ad]
+        jm, sm = (js - moon) % 12 + 1, (ss - moon) % 12 + 1
+        raw += 1 if jm in (2, 5, 7, 9, 11) else -0.3
+        jup7 = influences("Jupiter", js, s7)
+        if jup7:
+            raw += 1.5
+        if influences("Jupiter", js, (moon + 6) % 12):
+            raw += 0.5
+        raw += 1 if sm in (3, 6, 11) else (-0.3 if sm in (12, 1, 2) else 0)
+        dt = any(influences("Jupiter", js, x) and influences("Saturn", ss, x) for x in (s7, l7_sign))
+        if dt:
+            raw += 2.5
+        if av:
+            jb = av["bav"]["Jupiter"][js]
+            raw += 0.5 if jb >= 5 else -0.5 if jb <= 2 else 0
+        out.append({"date": d, "score": int(max(5, min(95, 45 + raw * 5))), "md": md, "ad": ad,
+                    "dasha_ok": bool(ad and links[ad] >= 2), "jup7": jup7, "dt": dt})
+    store[key] = out
+    return out
+
+def rel_partner(chart):
+    P, asp = chart["planets"], aspects_on(chart)
+    sc, why = {}, {}
+
+    def add(p, w, r):
+        sc[p] = sc.get(p, 0) + w
+        why.setdefault(p, [])
+        if r not in why[p]:
+            why[p].append(r)
+
+    l7 = lord_of(chart, 7)
+    add(l7, 3, "rule7")
+    for n_, p in P.items():
+        if p["house"] == 7:
+            add(n_, 2.5, "in7")
+    for n_ in asp[7]:
+        add(n_, 1, "asp7")
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 9)
+        add(SIGN_LORDS[(dl + 6) % 12], 2, "d9_7")
+    add("Venus", 1, "karaka")
+    top = sorted(sc, key=lambda p: -sc[p])[:3]
+    return [(p, why[p]) for p in top]
+
+def rel_windows(months):
+    wins, cur_w = [], None
+    for m in months:
+        if m["score"] >= GROWTH:
+            if cur_w is None:
+                cur_w = {"start": m["date"], "end": m["date"], "ms": [m]}
+            else:
+                cur_w["end"] = m["date"]
+                cur_w["ms"].append(m)
+        elif cur_w:
+            wins.append(cur_w)
+            cur_w = None
+    if cur_w:
+        wins.append(cur_w)
+    for w in wins:
+        w["avg"] = sum(x["score"] for x in w["ms"]) / len(w["ms"])
+    return sorted(sorted(wins, key=lambda w: -w["avg"])[:4], key=lambda w: w["start"])
+
+def rel_reasons(w, english=False):
+    get = (lambda k, **kw: MR[k][0].format(**kw)) if english else mt
+    name = (lambda p: p) if english else planet_name
+    out, n_ = [], len(w["ms"])
+    dm = [x for x in w["ms"] if x["dasha_ok"]]
+    if dm:
+        out.append(get("wr7_dasha", d=f"{name(dm[0]['md'])}–{name(dm[0]['ad'])}"))
+    if any(x["dt"] for x in w["ms"]):
+        out.append(get("wr7_dt"))
+    if sum(x["jup7"] for x in w["ms"]) * 2 >= n_:
+        out.append(get("wr7_jup"))
+    return " · ".join(out)
+
+def rel_year_rows(months):
+    by = {}
+    for m in months:
+        by.setdefault(m["date"].year, []).append(m)
+    rows = []
+    for y, ms in by.items():
+        avg = round(sum(x["score"] for x in ms) / len(ms))
+        chaps = list(dict.fromkeys(f"{planet_name(x['md'])}–{planet_name(x['ad'])}"
+                                   for x in ms if x["md"] and x["ad"]))
+        best = sorted([x for x in sorted(ms, key=lambda x: -x["score"]) if x["score"] >= GROWTH][:2],
+                      key=lambda x: x["date"])
+        rows.append({ct("col_year"): str(y), ct("col_chapter"): ", ".join(chaps) or "-",
+                     t("col_outlook"): mt(rel_label(avg)), t("col_score"): avg,
+                     ct("col_peak"): ", ".join(fmt_month_l(x["date"]) for x in best) or "-"})
+    return rows
+
+def rel_text(chart, an, partner, status, months, wins):
+    P = chart["planets"]
+    s7 = (chart["asc_sign"] + 6) % 12
+    lines = [f"Relationship status: {'single' if status == 'single' else 'married or committed'}",
+             f"Relationship outlook: {an['verdict']}",
+             "Strengths: " + ("; ".join(an["supportive"]) or "none notable"),
+             "Areas to build: " + ("; ".join(an["challenging"]) or "none notable"),
+             f"7th house: {SIGNS[s7]} (attracted to a partner who is {ELEMENT_T[s7 % 4][0]})",
+             "Partner qualities: " + "; ".join(f"{p} ({PARTNER_T[p][0]}) because it "
+                                               + ", ".join(RR_T[r][0] for r in rs) for p, rs in partner)]
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 9)
+        l7 = lord_of(chart, 7)
+        lines.append(f"D9 Lagna {SIGNS[dl]}; 7th lord {l7} in D9 house {(P[l7]['vargas'][9] - dl) % 12 + 1}; "
+                     f"Venus in D9 {SIGNS[P['Venus']['vargas'][9]]}")
+    lf, lm = manglik(chart)
+    lines.append(f"Mars placement: {manglik_text(lf, lm)}")
+    by = {}
+    for m in months:
+        by.setdefault(m["date"].year, []).append(m)
+    lines.append("Year by year (relationship momentum 0-100):")
+    for y, ms in by.items():
+        avg = round(sum(x["score"] for x in ms) / len(ms))
+        chaps = ", ".join(dict.fromkeys(f"{x['md']}-{x['ad']}" for x in ms if x["md"] and x["ad"]))
+        lines.append(f"  {y}: {avg} ({MR[rel_label(avg)][0]}); periods {chaps}")
+    lines.append("Best windows: " + ("; ".join(f"{w['start']:%b %Y} to {w['end']:%b %Y} "
+                                              f"({rel_reasons(w, english=True)})" for w in wins) or "none"))
+    return "\n".join(lines)
+
+def marriage_section(chart, pname, prel, pid, uid, now):
+    import pandas as pd
+    st.markdown(f"### {mt('mr_title')}")
+    st.caption(mt("mr_intro"))
+    if (now - chart["birth_utc"]).days / 365.25 < 18:
+        st.info(mt("mr_minor"))
+        return
+    if chart["time_unknown"]:
+        st.caption(mt("mr_unknown"))
+    status = st.radio(mt("mr_status"), ["single", "together"], horizontal=True, key=f"mr_status_{pid}",
+                      format_func=lambda s: mt("st_" + s))
+    P = chart["planets"]
+    an = area_analysis(chart, "marriage", now)
+    st.markdown(f"<div class='card'><p class='muted'>{mt('mr_glance')}</p>"
+                f"<p class='big'>{ct('cr_outlook', v=pick(VERDICT_T[an['verdict']]))}</p></div>",
+                unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(f"**{ct('cr_strengths')}**")
+        for s in an["supportive"][:4]:
+            st.markdown(f"- {s}")
+    with c2:
+        st.markdown(f"**{ct('cr_effort')}**")
+        for s in an["challenging"][:3] or ["-"]:
+            st.markdown(f"- {s}")
+    if L() != "en":
+        st.caption(t("en_detail_note"))
+
+    partner = rel_partner(chart)
+    s7 = (chart["asc_sign"] + 6) % 12
+    st.markdown(f"#### {mt('mr_partner_title')}")
+    st.markdown(mt("mr_seventh", s=sign_name(s7), e=pick(ELEMENT_T[s7 % 4])))
+    for p, reasons in partner:
+        rs = ", ".join(pick(RR_T[r]) for r in reasons)
+        st.markdown(f"<div class='card'><p class='gold' style='margin:0;font-weight:500'>{planet_name(p)}</p>"
+                    f"<p style='margin:4px 0'>{pick(PARTNER_T[p])}</p><p class='muted'>{rs}</p></div>",
+                    unsafe_allow_html=True)
+
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 9)
+        l7 = lord_of(chart, 7)
+        h = (P[l7]["vargas"][9] - dl) % 12 + 1
+        st.markdown(f"#### {mt('mr_d9_title')}")
+        st.markdown(kundali_svg(chart, 9), unsafe_allow_html=True)
+        st.caption(mt("mr_d9_line", s=sign_name(dl), p=planet_name(SIGN_LORDS[dl]), l=planet_name(l7), h=h,
+                      v=sign_name(P["Venus"]["vargas"][9])))
+
+    lf, lm = manglik(chart)
+    st.markdown(f"**{t('manglik_title')}**  \n{manglik_text_ui(lf, lm)}")
+    st.caption(t("manglik_caption"))
+
+    months = rel_months(chart, datetime(now.year, now.month, 1), 120)
+    st.markdown(f"#### {mt('mr_timeline_title')}")
+    st.caption(mt("mr_month_chart"))
+    df = pd.DataFrame({"Score": [m["score"] for m in months]}, index=[m["date"] for m in months])
+    st.line_chart(df, color="#FAC775", height=220)
+    st.markdown(f"**{ct('cr_years')}**")
+    st.dataframe(rel_year_rows(months), hide_index=True)
+    st.caption(mt("mr_score_note"))
+
+    wins = rel_windows(months)
+    st.markdown(f"#### {mt('mr_win_' + status)}")
+    if not wins:
+        st.caption(mt("mr_no_windows"))
+    for w in wins:
+        st.markdown(f"<div class='card'><p class='gold' style='margin:0;font-weight:500'>"
+                    f"{fmt_month_l(w['start'])} – {fmt_month_l(w['end'])}</p>"
+                    f"<p class='muted'>{rel_reasons(w)}</p></div>", unsafe_allow_html=True)
+
+    with st.expander(ct("cr_past_title")):
+        st.caption(mt("mr_past_note"))
+        total = now.year * 12 + now.month - 1 - 60
+        past = rel_months(chart, datetime(total // 12, total % 12 + 1, 1), 60)
+        past = [m for m in past if m["date"] >= chart["birth_utc"] + timedelta(days=365.25 * 18)]
+        if past:
+            st.dataframe(rel_year_rows(past), hide_index=True)
+
+    st.markdown(f"#### {mt('mr_guide_title')}")
+    kind = f"marriage_{status}"
+    rkey = f"{kind}|{pid}|{L()}"
+    cache = st.session_state.setdefault("reports", {})
+    if rkey not in cache:
+        saved = get_report(uid, pid, kind, L())
+        if saved:
+            cache[rkey] = saved
+    label = mt("mr_guide_refresh") if rkey in cache else mt("mr_guide_btn")
+    if st.button(label, key="mr_guide_btn"):
+        focus = ("supportive windows for meeting someone and for marriage or commitment, and the partner "
+                 "qualities the chart describes" if status == "single" else
+                 "harmony in the existing partnership, windows for family milestones, and periods that ask "
+                 "for patience and care")
+        prompt = (f"RELATIONSHIP REPORT REQUEST. This request has its own format: follow it instead of the "
+                  f"default headings.\n\nDATA CALCULATED BY DISHARA'S ENGINE:\n"
+                  f"{rel_text(chart, an, partner, status, months, wins)}\n\n"
+                  f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
+                  f"Write a warm, specific relationship guide focused on {focus}. Use bold headings (translated "
+                  f"into the reply language): Your relationships at a glance, "
+                  f"{'The partner your chart describes' if status == 'single' else 'Your partnership'}, "
+                  f"Timing (key years, naming the dasha periods), Best windows (dates and why), What you can do "
+                  f"(4 practical steps). Describe supportive timing, never fixed events. Never predict divorce, "
+                  f"separation, infidelity, 'no marriage', or anything about a partner's health or death. Don't "
+                  f"pressure anyone to marry; respect their choices. Mention the Mars placement only gently, as "
+                  f"one factor among many. Under 450 words.")
+        with st.spinner(mt("mr_writing")):
+            text = ask_dishara(prompt, pname, prel)
+        if text:
+            cache[rkey] = text
+            save_report(uid, pid, kind, L(), text)
+        else:
+            st.caption(t("resting"))
+    if rkey in cache:
+        st.markdown(cache[rkey])
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
