@@ -2604,7 +2604,399 @@ def sade_sati_section(chart, pname, prel, pid, uid, now):
     st.caption(t("ss_note"))
     if chart["time_unknown"]:
         st.caption(t("ss_unknown"))
+# ---------------- CAREER REPORT ----------------
+CR = {
+    "rep_ss": ("Sade Sati", "साढ़ेसाती", "সাড়েসাতি"),
+    "rep_career": ("Career", "करियर", "কর্মজীবন"),
+    "cr_title": ("Career report: your path and timing", "करियर रिपोर्ट: आपकी राह और समय",
+                 "কর্মজীবন রিপোর্ট: আপনার পথ ও সময়"),
+    "cr_intro": ("Built from your 10th house, its lord, the D10 career chart, career yogas, your dasha periods and "
+                 "Jupiter and Saturn's movement over the next 10 years.",
+                 "आपके 10वें भाव, उसके स्वामी, D10 करियर कुंडली, करियर योगों, आपकी दशाओं और अगले 10 वर्षों में गुरु और "
+                 "शनि की गति से तैयार।",
+                 "আপনার দশম ভাব, তার অধিপতি, D10 কর্মজীবন চার্ট, কর্মজীবনের যোগ, আপনার দশা এবং আগামী 10 বছরে "
+                 "বৃহস্পতি ও শনির গতি থেকে তৈরি।"),
+    "cr_unknown": ("Birth time unknown: this report reads from your Moon chart, and the D10 chart isn't available. "
+                   "Timing is approximate.",
+                   "जन्म समय अज्ञात: यह रिपोर्ट चंद्र कुंडली से पढ़ी गई है और D10 कुंडली उपलब्ध नहीं है। समय अनुमानित है।",
+                   "জন্মসময় অজানা: এই রিপোর্ট চন্দ্র কুণ্ডলী থেকে পড়া এবং D10 চার্ট পাওয়া যায় না। সময় আনুমানিক।"),
+    "cr_glance": ("Your career at a glance", "एक नज़र में आपका करियर", "এক নজরে আপনার কর্মজীবন"),
+    "cr_outlook": ("Overall outlook: {v}", "समग्र संभावना: {v}", "সামগ্রিক সম্ভাবনা: {v}"),
+    "cr_style_label": ("Work style", "कार्यशैली", "কাজের ধরন"),
+    "cr_style_biz": ("Leans towards business, consulting or independent work.",
+                     "व्यवसाय, परामर्श या स्वतंत्र काम की ओर झुकाव।",
+                     "ব্যবসা, পরামর্শ বা স্বাধীন কাজের দিকে ঝোঁক।"),
+    "cr_style_job": ("Leans towards a job within an organisation, where structure helps you grow.",
+                     "किसी संगठन में नौकरी की ओर झुकाव, जहाँ व्यवस्थित ढाँचा आपको आगे बढ़ाता है।",
+                     "কোনো প্রতিষ্ঠানে চাকরির দিকে ঝোঁক, যেখানে সুসংগঠিত কাঠামো আপনাকে এগিয়ে নেয়।"),
+    "cr_style_both": ("Suits both: a stable role with an entrepreneurial side project works well.",
+                      "दोनों उपयुक्त: स्थिर नौकरी के साथ कोई उद्यमी पहल अच्छी रहती है।",
+                      "দুটিই উপযুক্ত: স্থিতিশীল চাকরির পাশাপাশি একটি উদ্যোগী প্রকল্প ভালো কাজ করে।"),
+    "cr_strengths": ("Key strengths", "मुख्य शक्तियाँ", "প্রধান শক্তি"),
+    "cr_effort": ("Areas to build", "विकसित करने योग्य क्षेत्र", "গড়ে তোলার ক্ষেত্র"),
+    "cr_fields_title": ("Fields that suit you", "आपके लिए उपयुक्त क्षेत्र", "আপনার জন্য উপযুক্ত ক্ষেত্র"),
+    "cr_d10_title": ("Your D10 career chart", "आपकी D10 करियर कुंडली", "আপনার D10 কর্মজীবন চার্ট"),
+    "cr_d10_line": ("D10 Lagna: {s}, ruled by {p}. Your 10th lord, {l}, falls in house {h} of the D10.",
+                    "D10 लग्न: {s}, स्वामी {p}। आपके दशमेश {l} D10 के {h} भाव में हैं।",
+                    "D10 লগ্ন: {s}, অধিপতি {p}। আপনার দশমেশ {l} D10-এর {h} ভাবে আছেন।"),
+    "cr_timeline_title": ("Your next 10 years", "आपके अगले 10 वर्ष", "আপনার আগামী 10 বছর"),
+    "cr_month_chart": ("Monthly career momentum (0–100)", "मासिक करियर गति (0–100)", "মাসিক কর্মজীবনের গতি (0–100)"),
+    "cr_years": ("Year by year", "वर्षवार", "বছর অনুযায়ী"),
+    "col_year": ("Year", "वर्ष", "বছর"),
+    "col_chapter": ("Running periods", "चल रही दशाएँ", "চলমান দশা"),
+    "col_peak": ("Strongest months", "सबसे अच्छे महीने", "সেরা মাস"),
+    "lbl_growth": ("Growth window", "विकास का समय", "বৃদ্ধির সময়"),
+    "lbl_steady": ("Steady build", "स्थिर प्रगति", "স্থির অগ্রগতি"),
+    "lbl_cons": ("Consolidate and prepare", "मज़बूती और तैयारी", "সংহতি ও প্রস্তুতি"),
+    "cr_score_note": ("The score combines your running dasha periods, Jupiter and Saturn's transits from your Moon "
+                      "and Lagna, double transits on your 10th and 11th houses, and Ashtakavarga points. It shows "
+                      "momentum, not fixed outcomes.",
+                      "स्कोर आपकी चल रही दशाओं, चंद्र और लग्न से गुरु-शनि के गोचर, 10वें और 11वें भाव पर दोहरे गोचर और "
+                      "अष्टकवर्ग अंकों को जोड़ता है। यह गति दिखाता है, निश्चित परिणाम नहीं।",
+                      "স্কোর আপনার চলমান দশা, চন্দ্র ও লগ্ন থেকে বৃহস্পতি-শনির গোচর, দশম ও একাদশ ভাবে দ্বৈত গোচর এবং "
+                      "অষ্টকবর্গ বিন্দু মিলিয়ে তৈরি। এটি গতি দেখায়, নির্দিষ্ট ফল নয়।"),
+    "cr_windows_title": ("Best windows for a job change, promotion or launch",
+                         "नौकरी बदलने, पदोन्नति या नई शुरुआत के लिए सबसे अच्छे समय",
+                         "চাকরি বদল, পদোন্নতি বা নতুন শুরুর সেরা সময়"),
+    "cr_no_windows": ("No single standout peak in the next 10 years; steady, consistent progress is your path.",
+                      "अगले 10 वर्षों में कोई एक बड़ा शिखर नहीं दिखता; स्थिर और लगातार प्रगति आपकी राह है।",
+                      "আগামী 10 বছরে কোনো একক বড় শীর্ষ নেই; স্থির ও ধারাবাহিক অগ্রগতিই আপনার পথ।"),
+    "wr_dasha": ("{d} period supports career", "{d} दशा करियर को सहारा देती है", "{d} দশা কর্মজীবনকে সমর্থন করে"),
+    "wr_dt": ("double transit on your 10th or 11th house", "आपके 10वें या 11वें भाव पर दोहरा गोचर",
+              "আপনার দশম বা একাদশ ভাবে দ্বৈত গোচর"),
+    "wr_jup": ("Jupiter favourable from your Moon", "चंद्र से गुरु अनुकूल", "চন্দ্র থেকে বৃহস্পতি অনুকূল"),
+    "wr_sat": ("Saturn favourable from your Moon", "चंद्र से शनि अनुकूल", "চন্দ্র থেকে শনি অনুকূল"),
+    "cr_past_title": ("Check against your past", "अपने अतीत से मिलान करें", "আপনার অতীতের সঙ্গে মিলিয়ে দেখুন"),
+    "cr_past_note": ("Here is the same method applied to the last 5 years. Do the growth windows match real moments "
+                     "in your career, such as a new job or promotion? This helps you judge the timeline ahead.",
+                     "यही पद्धति पिछले 5 वर्षों पर लागू की गई है। क्या विकास के समय आपके करियर के असली पलों से मेल खाते "
+                     "हैं, जैसे नई नौकरी या पदोन्नति? इससे आप आगे की समयरेखा को परख सकते हैं।",
+                     "একই পদ্ধতি গত 5 বছরে প্রয়োগ করা হয়েছে। বৃদ্ধির সময়গুলি কি আপনার কর্মজীবনের বাস্তব মুহূর্তের "
+                     "সঙ্গে মেলে, যেমন নতুন চাকরি বা পদোন্নতি? এতে সামনের সময়রেখা যাচাই করতে পারবেন।"),
+    "cr_guide_title": ("Your personal career guide", "आपका व्यक्तिगत करियर मार्गदर्शन", "আপনার ব্যক্তিগত কর্মজীবন নির্দেশিকা"),
+    "cr_guide_btn": ("Write my personal career guide", "मेरा व्यक्तिगत करियर मार्गदर्शन लिखें",
+                     "আমার ব্যক্তিগত কর্মজীবন নির্দেশিকা লিখুন"),
+    "cr_guide_refresh": ("Rewrite my career guide", "करियर मार्गदर्शन फिर से लिखें", "কর্মজীবন নির্দেশিকা আবার লিখুন"),
+    "cr_writing": ("Dishara is writing your career guide...", "दिशारा आपका करियर मार्गदर्शन लिख रही है...",
+                   "দিশারা আপনার কর্মজীবন নির্দেশিকা লিখছে..."),
+}
 
+def ct(key, **kw):
+    s = pick(CR[key])
+    return s.format(**kw) if kw else s
+
+R_T = {"rule10": ("rules your 10th house", "आपके 10वें भाव के स्वामी", "আপনার দশম ভাবের অধিপতি"),
+       "in10": ("sits in your 10th house", "आपके 10वें भाव में स्थित", "আপনার দশম ভাবে অবস্থিত"),
+       "asp10": ("aspects your 10th house", "आपके 10वें भाव पर दृष्टि", "আপনার দশম ভাবে দৃষ্টি দেয়"),
+       "d10lagna": ("rules your D10 Lagna", "आपके D10 लग्न के स्वामी", "আপনার D10 লগ্নের অধিপতি"),
+       "d10_10": ("in the 10th house of your D10", "आपके D10 के 10वें भाव में", "আপনার D10-এর দশম ভাবে"),
+       "naklord": ("nakshatra lord of your 10th lord", "आपके दशमेश का नक्षत्र स्वामी", "আপনার দশমেশের নক্ষত্রপতি")}
+FIELD_T = {
+    "Sun": ("Government, leadership, administration, management", "सरकारी क्षेत्र, नेतृत्व, प्रशासन, प्रबंधन",
+            "সরকারি ক্ষেত্র, নেতৃত্ব, প্রশাসন, ব্যবস্থাপনা"),
+    "Moon": ("Public-facing work, hospitality, healthcare support, food, HR",
+             "जनसंपर्क का काम, आतिथ्य, स्वास्थ्य सेवा सहयोग, खाद्य, मानव संसाधन",
+             "জনসংযোগের কাজ, আতিথেয়তা, স্বাস্থ্যসেবা সহায়তা, খাদ্য, মানবসম্পদ"),
+    "Mars": ("Engineering, defence, sports, real estate, surgery-related fields",
+             "इंजीनियरिंग, रक्षा, खेल, रियल एस्टेट, शल्य चिकित्सा से जुड़े क्षेत्र",
+             "ইঞ্জিনিয়ারিং, প্রতিরক্ষা, খেলাধুলা, রিয়েল এস্টেট, শল্যচিকিৎসা সংক্রান্ত ক্ষেত্র"),
+    "Mercury": ("Technology, finance, writing, trade, analytics, communication",
+                "तकनीक, वित्त, लेखन, व्यापार, विश्लेषण, संचार", "প্রযুক্তি, অর্থ, লেখালেখি, বাণিজ্য, বিশ্লেষণ, যোগাযোগ"),
+    "Jupiter": ("Teaching, law, advisory, banking, consulting", "शिक्षण, कानून, सलाह, बैंकिंग, परामर्श",
+                "শিক্ষকতা, আইন, উপদেষ্টা, ব্যাংকিং, পরামর্শ"),
+    "Venus": ("Design, arts, media, fashion, beauty, luxury and hospitality",
+              "डिज़ाइन, कला, मीडिया, फ़ैशन, सौंदर्य, लक्ज़री और आतिथ्य",
+              "ডিজাইন, শিল্পকলা, মিডিয়া, ফ্যাশন, সৌন্দর্য, বিলাসপণ্য ও আতিথেয়তা"),
+    "Saturn": ("Operations, manufacturing, infrastructure, large organisations, public service",
+               "संचालन, विनिर्माण, बुनियादी ढाँचा, बड़े संगठन, जनसेवा",
+               "পরিচালনা, উৎপাদন, পরিকাঠামো, বড় প্রতিষ্ঠান, জনসেবা"),
+    "Rahu": ("Technology, foreign companies, aviation, new-age and unconventional paths",
+             "तकनीक, विदेशी कंपनियाँ, विमानन, नए ज़माने के और अलग रास्ते",
+             "প্রযুক্তি, বিদেশি সংস্থা, বিমান চলাচল, নতুন ধারার ও ব্যতিক্রমী পথ"),
+    "Ketu": ("Research, coding, analysis, healing and spiritual work", "शोध, कोडिंग, विश्लेषण, उपचार और आध्यात्मिक कार्य",
+             "গবেষণা, কোডিং, বিশ্লেষণ, নিরাময় ও আধ্যাত্মিক কাজ"),
+}
+CAREER_HOUSES_W = {10: 2, 11: 1.5, 2: 1, 6: 1}
+ROLE_W = {"Yogakaraka": 1.5, "Lagna lord": 1, "Functional benefic": 0.5, "Neutral": 0,
+          "Functional malefic": -0.5}
+GROWTH, STEADY = 72, 55
+
+def fmt_month_l(d):
+    if L() == "hi":
+        return f"{MON_HI[d.month - 1]} {d.year}"
+    if L() == "bn":
+        return f"{MON_BN[d.month - 1]} {d.year}"
+    return f"{d:%b %Y}"
+
+def career_label(score):
+    return "lbl_growth" if score >= GROWTH else "lbl_steady" if score >= STEADY else "lbl_cons"
+
+def career_link(chart, planet, asp):
+    P, w = chart["planets"], 0.0
+    if planet in ("Rahu", "Ketu"):
+        w += 0.5 * career_link(chart, SIGN_LORDS[P[planet]["sign"]], asp)
+    else:
+        for h, hw in CAREER_HOUSES_W.items():
+            if lord_of(chart, h) == planet:
+                w += hw
+        w += ROLE_W.get(chart["roles"][planet], 0)
+        if planet in asp[10]:
+            w += 1
+    w += CAREER_HOUSES_W.get(P[planet]["house"], 0)
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 10)
+        if (P[planet]["vargas"][10] - dl) % 12 + 1 in (1, 4, 5, 7, 9, 10):
+            w += 0.5
+    return w
+
+def career_months(chart, start, months):
+    key = f"{start:%Y-%m}|{months}"
+    store = chart.setdefault("_cm", {})
+    if key in store:
+        return store[key]
+    P, asp, av = chart["planets"], aspects_on(chart), chart.get("av")
+    moon = P["Moon"]["sign"]
+    s10, s11 = (chart["asc_sign"] + 9) % 12, (chart["asc_sign"] + 10) % 12
+    links = {pl_: career_link(chart, pl_, asp) for pl_ in P}
+    out = []
+    for i in range(months):
+        mm = (start.month - 1 + i) % 12 + 1
+        yy = start.year + (start.month - 1 + i) // 12
+        d = datetime(yy, mm, 15)
+        md, ad = dasha_at(chart, d)
+        jd = julian_day(d)
+        js = int(sidereal_lon(jd, swe.JUPITER)[0] // 30)
+        ss = int(sidereal_lon(jd, swe.SATURN)[0] // 30)
+        raw = 0.0
+        if md:
+            raw += 0.4 * links[md]
+        if ad:
+            raw += 0.8 * links[ad]
+        jm, sm = (js - moon) % 12 + 1, (ss - moon) % 12 + 1
+        jup_ok, sat_ok = jm in (2, 5, 7, 9, 11), sm in (3, 6, 11)
+        raw += 1.5 if jup_ok else -0.5
+        raw += 1.5 if sat_ok else (-0.5 if sm in (12, 1, 2) else 0)
+        if influences("Jupiter", js, s10):
+            raw += 1
+        dt = any(influences("Jupiter", js, x) and influences("Saturn", ss, x) for x in (s10, s11))
+        if dt:
+            raw += 2
+        if av:
+            jb, sb = av["bav"]["Jupiter"][js], av["bav"]["Saturn"][ss]
+            raw += 0.5 if jb >= 5 else -0.5 if jb <= 2 else 0
+            raw += 0.5 if sb >= 5 else -0.5 if sb <= 2 else 0
+        out.append({"date": d, "score": int(max(5, min(95, 45 + raw * 5))), "md": md, "ad": ad,
+                    "dasha_ok": bool(ad and links[ad] >= 2), "jup": jup_ok, "sat": sat_ok, "dt": dt})
+    store[key] = out
+    return out
+
+def career_fields(chart):
+    P, asp = chart["planets"], aspects_on(chart)
+    sc, why = {}, {}
+
+    def add(p, w, r):
+        sc[p] = sc.get(p, 0) + w
+        why.setdefault(p, [])
+        if r not in why[p]:
+            why[p].append(r)
+
+    l10 = lord_of(chart, 10)
+    add(l10, 3, "rule10")
+    for n_, p in P.items():
+        if p["house"] == 10:
+            add(n_, 2.5, "in10")
+    for n_ in asp[10]:
+        add(n_, 1, "asp10")
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 10)
+        add(SIGN_LORDS[dl], 2, "d10lagna")
+        for n_, p in P.items():
+            if (p["vargas"][10] - dl) % 12 + 1 == 10:
+                add(n_, 1.5, "d10_10")
+    add(DASHA_ORDER[P[l10]["nak"] % 9][0], 1.5, "naklord")
+    for p in sc:
+        if P[p]["dignity"] in ("exalted", "own sign"):
+            sc[p] += 1
+    top = sorted(sc, key=lambda p: -sc[p])[:3]
+    return [(p, why[p]) for p in top]
+
+def career_style(chart):
+    nb, av, asp = neecha_bhanga(chart), chart.get("av"), aspects_on(chart)
+
+    def hs(h):
+        return sum(v for v, _ in house_strength(chart, h, nb, av, asp))
+
+    biz = hs(7) + 0.5 * hs(3) + 0.5 * hs(11)
+    job = hs(6) + 0.5 * hs(10)
+    return "biz" if biz - job > 1 else "job" if job - biz > 1 else "both"
+
+def career_windows(months):
+    wins, cur_w = [], None
+    for m in months:
+        if m["score"] >= GROWTH:
+            if cur_w is None:
+                cur_w = {"start": m["date"], "end": m["date"], "ms": [m]}
+            else:
+                cur_w["end"] = m["date"]
+                cur_w["ms"].append(m)
+        elif cur_w:
+            wins.append(cur_w)
+            cur_w = None
+    if cur_w:
+        wins.append(cur_w)
+    for w in wins:
+        w["avg"] = sum(x["score"] for x in w["ms"]) / len(w["ms"])
+    return sorted(sorted(wins, key=lambda w: -w["avg"])[:4], key=lambda w: w["start"])
+
+def window_reasons(w, english=False):
+    get = (lambda k, **kw: CR[k][0].format(**kw)) if english else ct
+    name = (lambda p: p) if english else planet_name
+    out, n_ = [], len(w["ms"])
+    dm = [x for x in w["ms"] if x["dasha_ok"]]
+    if dm:
+        out.append(get("wr_dasha", d=f"{name(dm[0]['md'])}–{name(dm[0]['ad'])}"))
+    if any(x["dt"] for x in w["ms"]):
+        out.append(get("wr_dt"))
+    if sum(x["jup"] for x in w["ms"]) * 2 >= n_:
+        out.append(get("wr_jup"))
+    if sum(x["sat"] for x in w["ms"]) * 2 >= n_:
+        out.append(get("wr_sat"))
+    return " · ".join(out)
+
+def year_rows(months):
+    by = {}
+    for m in months:
+        by.setdefault(m["date"].year, []).append(m)
+    rows = []
+    for y, ms in by.items():
+        avg = round(sum(x["score"] for x in ms) / len(ms))
+        chaps = list(dict.fromkeys(f"{planet_name(x['md'])}–{planet_name(x['ad'])}"
+                                   for x in ms if x["md"] and x["ad"]))
+        best = sorted([x for x in sorted(ms, key=lambda x: -x["score"]) if x["score"] >= GROWTH][:2],
+                      key=lambda x: x["date"])
+        rows.append({ct("col_year"): str(y), ct("col_chapter"): ", ".join(chaps) or "-",
+                     t("col_outlook"): ct(career_label(avg)), t("col_score"): avg,
+                     ct("col_peak"): ", ".join(fmt_month_l(x["date"]) for x in best) or "-"})
+    return rows
+
+def career_text(chart, an, fields, style, months, wins):
+    lines = [f"Career outlook: {an['verdict']}",
+             "Strengths: " + ("; ".join(an["supportive"]) or "none notable"),
+             "Areas to build: " + ("; ".join(an["challenging"]) or "none notable"),
+             f"Work style: {CR['cr_style_' + style][0]}",
+             "Suitable fields: " + "; ".join(f"{p} ({FIELD_T[p][0]}) because it "
+                                             + ", ".join(R_T[r][0] for r in rs) for p, rs in fields)]
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 10)
+        l10 = lord_of(chart, 10)
+        lines.append(f"D10 Lagna {SIGNS[dl]}; 10th lord {l10} in D10 house "
+                     f"{(chart['planets'][l10]['vargas'][10] - dl) % 12 + 1}")
+    by = {}
+    for m in months:
+        by.setdefault(m["date"].year, []).append(m)
+    lines.append("Year by year (career momentum 0-100):")
+    for y, ms in by.items():
+        avg = round(sum(x["score"] for x in ms) / len(ms))
+        chaps = ", ".join(dict.fromkeys(f"{x['md']}-{x['ad']}" for x in ms if x["md"] and x["ad"]))
+        lines.append(f"  {y}: {avg} ({CR[career_label(avg)][0]}); periods {chaps}")
+    lines.append("Best windows: " + ("; ".join(f"{w['start']:%b %Y} to {w['end']:%b %Y} "
+                                              f"({window_reasons(w, english=True)})" for w in wins) or "none"))
+    return "\n".join(lines)
+
+def career_section(chart, pname, prel, pid, uid, now):
+    import pandas as pd
+    st.markdown(f"### {ct('cr_title')}")
+    st.caption(ct("cr_intro"))
+    if chart["time_unknown"]:
+        st.caption(ct("cr_unknown"))
+    an = area_analysis(chart, "career", now)
+    style = career_style(chart)
+    st.markdown(f"<div class='card'><p class='muted'>{ct('cr_glance')}</p>"
+                f"<p class='big'>{ct('cr_outlook', v=pick(VERDICT_T[an['verdict']]))}</p>"
+                f"<p class='muted'>{ct('cr_style_label')}: {ct('cr_style_' + style)}</p></div>",
+                unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown(f"**{ct('cr_strengths')}**")
+        for s in an["supportive"][:4]:
+            st.markdown(f"- {s}")
+    with c2:
+        st.markdown(f"**{ct('cr_effort')}**")
+        for s in an["challenging"][:3] or ["-"]:
+            st.markdown(f"- {s}")
+    if L() != "en":
+        st.caption(t("en_detail_note"))
+
+    fields = career_fields(chart)
+    st.markdown(f"#### {ct('cr_fields_title')}")
+    for p, reasons in fields:
+        rs = ", ".join(pick(R_T[r]) for r in reasons)
+        st.markdown(f"<div class='card'><p class='gold' style='margin:0;font-weight:500'>{planet_name(p)}</p>"
+                    f"<p style='margin:4px 0'>{pick(FIELD_T[p])}</p><p class='muted'>{rs}</p></div>",
+                    unsafe_allow_html=True)
+
+    if not chart["time_unknown"]:
+        dl = varga_sign(chart["asc"], 10)
+        l10 = lord_of(chart, 10)
+        h = (chart["planets"][l10]["vargas"][10] - dl) % 12 + 1
+        st.markdown(f"#### {ct('cr_d10_title')}")
+        st.markdown(kundali_svg(chart, 10), unsafe_allow_html=True)
+        st.caption(ct("cr_d10_line", s=sign_name(dl), p=planet_name(SIGN_LORDS[dl]), l=planet_name(l10), h=h))
+
+    months = career_months(chart, datetime(now.year, now.month, 1), 120)
+    st.markdown(f"#### {ct('cr_timeline_title')}")
+    st.caption(ct("cr_month_chart"))
+    df = pd.DataFrame({"Score": [m["score"] for m in months]}, index=[m["date"] for m in months])
+    st.line_chart(df, color="#FAC775", height=220)
+    st.markdown(f"**{ct('cr_years')}**")
+    st.dataframe(year_rows(months), hide_index=True)
+    st.caption(ct("cr_score_note"))
+
+    wins = career_windows(months)
+    st.markdown(f"#### {ct('cr_windows_title')}")
+    if not wins:
+        st.caption(ct("cr_no_windows"))
+    for w in wins:
+        st.markdown(f"<div class='card'><p class='gold' style='margin:0;font-weight:500'>"
+                    f"{fmt_month_l(w['start'])} – {fmt_month_l(w['end'])}</p>"
+                    f"<p class='muted'>{window_reasons(w)}</p></div>", unsafe_allow_html=True)
+
+    with st.expander(ct("cr_past_title")):
+        st.caption(ct("cr_past_note"))
+        total = now.year * 12 + now.month - 1 - 60
+        past = career_months(chart, datetime(total // 12, total % 12 + 1, 1), 60)
+        past = [m for m in past if m["date"] >= chart["birth_utc"]]
+        if past:
+            st.dataframe(year_rows(past), hide_index=True)
+
+    st.markdown(f"#### {ct('cr_guide_title')}")
+    rkey = f"career|{pid}|{L()}"
+    cache = st.session_state.setdefault("reports", {})
+    if rkey not in cache:
+        saved = get_report(uid, pid, "career", L())
+        if saved:
+            cache[rkey] = saved
+    label = ct("cr_guide_refresh") if rkey in cache else ct("cr_guide_btn")
+    if st.button(label, key="cr_guide_btn"):
+        prompt = (f"CAREER REPORT REQUEST. This request has its own format: follow it instead of the default "
+                  f"headings.\n\nDATA CALCULATED BY DISHARA'S ENGINE:\n"
+                  f"{career_text(chart, an, fields, style, months, wins)}\n\n"
+                  f"BIRTH CHART:\n{chart_text(chart, now)}\n\n"
+                  f"Write a warm, specific career guide with bold headings (translated into the reply language): "
+                  f"Your career at a glance (outlook, work style and the 2 strongest factors), Fields that suit you "
+                  f"(explain the planetary reasons simply), Your next 10 years (short highlights for the key years, "
+                  f"naming the dasha periods), Best windows (dates and why), What you can do (4 practical steps). "
+                  f"Describe momentum and opportunities, never guaranteed outcomes, salaries or job losses. Frame "
+                  f"slower periods as times to build skills and consolidate. Under 450 words.")
+        with st.spinner(ct("cr_writing")):
+            text = ask_dishara(prompt, pname, prel)
+        if text:
+            cache[rkey] = text
+            save_report(uid, pid, "career", L(), text)
+        else:
+            st.caption(t("resting"))
+    if rkey in cache:
+        st.markdown(cache[rkey])
 # ---------------- SCREENS ----------------
 def hero():
     st.markdown(f"""<div style="text-align:center;padding:16px 0 4px">
@@ -3077,7 +3469,13 @@ with match:
 
 # ----- REPORTS -----
 with reports:
-    sade_sati_section(chart, pname, prel, pid, uid, now)
+    rep = st.segmented_control("rep_kind", ["sade_sati", "career"], default="sade_sati", key="rep_kind",
+                               format_func=lambda k: ct("rep_ss") if k == "sade_sati" else ct("rep_career"),
+                               label_visibility="collapsed")
+    if rep == "career":
+        career_section(chart, pname, prel, pid, uid, now)
+    else:
+        sade_sati_section(chart, pname, prel, pid, uid, now)
 
 # ----- SHARE -----
 with share:
